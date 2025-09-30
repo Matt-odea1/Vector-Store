@@ -1,21 +1,24 @@
 # src/app.py
 from __future__ import annotations
 
+import logging
 import os
+import traceback
 from typing import List
+from urllib.request import Request
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv, find_dotenv
+from starlette.responses import JSONResponse
 
-# Load env (local.env or .env at repo root)
-load_dotenv(find_dotenv(filename="../local.env", usecwd=True), override=False)
+load_dotenv(find_dotenv(filename="local.env", usecwd=True), override=False)
 
-# ✅ Correct import path for your router
-from main.controllers.InternalEndpoints import router as context_router
+from src.main.controllers.InternalEndpoints import router as context_router
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title=os.getenv("APP_TITLE", "Context API"),
+        title=os.getenv("AI_TUTOR", "Context API"),
         version=os.getenv("APP_VERSION", "0.1.0"),
         docs_url=os.getenv("DOCS_URL", "/docs"),
         redoc_url=os.getenv("REDOC_URL", "/redoc"),
@@ -34,21 +37,22 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
 
-    # Health/meta
-    @app.get("/", tags=["meta"])
-    def root():
-        return {"ok": True, "service": "Context API"}
-
-    @app.get("/healthz", tags=["meta"])
-    def healthz():
+    @app.get("/health", tags=["meta"])
+    def health():
         return {"status": "ok"}
 
-    # ✅ Mount your internal router
+    @app.exception_handler(Exception)
+    async def unhandled_exception(request: Request, exc: Exception):
+        logging.exception("Unhandled error on %s %s", request.method)
+        detail = {"ok": False, "error": str(exc)}
+        if logging.DEBUG:
+            detail["trace"] = traceback.format_exc()
+        return JSONResponse(status_code=500, content=detail)
+
     app.include_router(context_router)
 
     return app
 
-# Module-level app for uvicorn
 app = create_app()
 
 if __name__ == "__main__":
@@ -56,5 +60,4 @@ if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8000"))
     reload = os.getenv("RELOAD", "true").lower() == "true"
-    # Use an import string for reload
-    uvicorn.run("src.app:app", host=host, port=port, reload=reload)
+    uvicorn.run("app:app", host=host, port=port, reload=reload)
