@@ -3,7 +3,7 @@
 Fetch Ed lessons for a course and export a consolidated PDF.
 
 Usage:
-  python ed_lessons_to_pdf.py --env local.env --course 16645 --out ed_lessons.pdf
+  python ed_lessons_to_pdf.py --env .env --course 16645 --out ed_lessons.pdf
 
 Requirements:
   pip install requests reportlab
@@ -471,7 +471,7 @@ def export_pdf(lessons: List[LessonSummary], out_path: Path) -> None:
 # ----------------------------
 def main() -> None:
     parser = argparse.ArgumentParser(description="Export Ed lessons to a PDF.")
-    parser.add_argument("--env", type=str, default="local.env", help="Path to local.env containing ED_BEARER=...")
+    parser.add_argument("--env", type=str, default=".env", help="Path to .env containing ED_BEARER=...")
     parser.add_argument("--course", type=int, default=DEFAULT_COURSE_ID, help="Course ID (default 16645)")
     parser.add_argument("--out-dir", type=str, default="ed_lessons_pdfs", help="Output directory for per-lesson PDFs")
     parser.add_argument("--max-lessons", type=int, default=0, help="Optional cap on number of lessons to fetch (0 = all)")
