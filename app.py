@@ -14,7 +14,8 @@ from starlette.responses import JSONResponse
 
 load_dotenv(find_dotenv(filename=".env", usecwd=True), override=False)
 
-from src.main.controllers.InternalEndpoints import router as context_router
+from src.main.controllers.InternalEndpoints import router as context_router, chat_router
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=500, content=detail)
 
     app.include_router(context_router)
+    app.include_router(chat_router)
 
     return app
 

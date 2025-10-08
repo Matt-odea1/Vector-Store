@@ -3,9 +3,9 @@ AgentCoreProvider.py
 Implements LlmProvider using AgentCore runtime.
 """
 from typing import List, Dict, Union, Generator
-from main.agentcore_setup.bootstrap import get_runtime
-from main.agentcore_setup.config import BEDROCK_MODEL_CHAT, BEDROCK_MODEL_EMBED, EMBEDDING_DIM
-from main.llm.LlmProvider import LlmProvider
+from src.main.agentcore_setup.bootstrap import get_runtime
+from src.main.agentcore_setup.config import BEDROCK_MODEL_CHAT, BEDROCK_MODEL_EMBED, EMBEDDING_DIM
+from src.main.llm.LlmProvider import LlmProvider
 import logging
 
 class LlmError(Exception): pass

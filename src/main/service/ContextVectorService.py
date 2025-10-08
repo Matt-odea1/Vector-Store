@@ -40,8 +40,14 @@ class ContextVectorService:
     # ------------------------ core ops ------------------------
 
     def embed(self, text: str) -> List[float]:
-        # Use AgentCoreProvider for embeddings
+        # Defensive: ensure text is a string
+        if not isinstance(text, str):
+            text = str(text)
         vectors = self.llm.embed([text])
+        if isinstance(vectors, dict) and "vectors" in vectors:
+            vectors = vectors["vectors"]
+        if not vectors or not isinstance(vectors, list) or not isinstance(vectors[0], list):
+            raise ValueError(f"Embedding response malformed: {vectors}")
         if len(vectors[0]) != self.expected_embed_dim:
             raise ValueError(f"Embedding dim mismatch: expected {self.expected_embed_dim}, got {len(vectors[0])}")
         return vectors[0]
@@ -60,7 +66,9 @@ class ContextVectorService:
         inserted = []
         with self.driver.session() as s:
             for i, ch in enumerate(chunks):
-                embedding = self.embed(ch)
+                # If chunk is a dict, use its 'content' field
+                chunk_text = ch["content"] if isinstance(ch, dict) and "content" in ch else str(ch)
+                embedding = self.embed(chunk_text)
                 s.run(
                     """
                     MERGE (d:Document {id: $id, chunk_idx: $idx})
@@ -74,7 +82,7 @@ class ContextVectorService:
                     id=document_id,
                     title=document_name,
                     description=description,
-                    text=ch,
+                    text=chunk_text,
                     embedding=embedding,
                     idx=i,
                     scope=scope,
@@ -136,6 +144,39 @@ class ContextVectorService:
                     "created_at": record["created_at"],
                 })
             return docs
+
+    def semantic_search(self, query: str, top_k: int = 5) -> list[dict]:
+        """
+        Returns top_k most relevant document chunks for the query.
+        Each result: {"id": str, "text": str, "score": float, ...}
+        """
+        import math
+        def cosine_similarity(a, b):
+            dot = sum(x*y for x, y in zip(a, b))
+            norm_a = math.sqrt(sum(x*x for x in a))
+            norm_b = math.sqrt(sum(y*y for y in b))
+            if norm_a == 0 or norm_b == 0:
+                return 0.0
+            return dot / (norm_a * norm_b)
+
+        query_embedding = self.embed(query)
+        with self.driver.session() as s:
+            # Fetch all chunks and their embeddings
+            results = s.run(
+                """
+                MATCH (d:Document)
+                RETURN d.id AS id, d.text AS text, d.embedding AS embedding
+                """
+            )
+            scored = []
+            for r in results:
+                emb = r["embedding"]
+                if not emb or len(emb) != len(query_embedding):
+                    continue  # skip invalid
+                score = cosine_similarity(query_embedding, emb)
+                scored.append({"id": r["id"], "text": r["text"], "score": score})
+            scored.sort(key=lambda x: x["score"], reverse=True)
+            return scored[:top_k]
 
     def close(self) -> None:
         self.driver.close()

@@ -440,8 +440,9 @@ def export_pdf(lessons: List[LessonSummary], out_path: Path) -> None:
     for i, lesson in enumerate(lessons, start=1):
         story.append(Paragraph(f"Lesson {i}: {html.escape(lesson.title)}", h1))
         meta_lines = []
-        if lesson.created_at:
-            meta_lines.append(f"<b>Created:</b> {html.escape(lesson.created_at)}")
+        # Do NOT include lesson.created_at
+        # if lesson.created_at:
+        #     meta_lines.append(f"<b>Created:</b> {html.escape(lesson.created_at)}")
         if lesson.outline:
             meta_lines.append(f"<i>Outline:</i> {html.escape(lesson.outline)}")
         if meta_lines:
