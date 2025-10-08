@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv, find_dotenv
 from starlette.responses import JSONResponse
 
-load_dotenv(find_dotenv(filename="local.env", usecwd=True), override=False)
+load_dotenv(find_dotenv(filename=".env", usecwd=True), override=False)
 
 from src.main.controllers.InternalEndpoints import router as context_router
 
