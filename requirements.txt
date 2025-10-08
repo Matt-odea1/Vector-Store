@@ -1,3 +1,4 @@
+boto3
 bedrock-agentcore
 agentcore
 pydantic~=2.10.6

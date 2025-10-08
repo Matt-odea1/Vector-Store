@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(Exception)
     async def unhandled_exception(request: Request, exc: Exception):
-        logging.exception("Unhandled error on %s %s", request.method)
+        logging.exception("Unhandled error on %s %s", request.method, request.url.path)
         detail = {"ok": False, "error": str(exc)}
         if logging.DEBUG:
             detail["trace"] = traceback.format_exc()
