@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv, find_dotenv
 from starlette.responses import JSONResponse
 
-load_dotenv(find_dotenv(filename="local.env", usecwd=True), override=False)
+load_dotenv(find_dotenv(filename=".env", usecwd=True), override=False)
 
 from src.main.controllers.InternalEndpoints import router as context_router
 
@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(Exception)
     async def unhandled_exception(request: Request, exc: Exception):
-        logging.exception("Unhandled error on %s %s", request.method)
+        logging.exception("Unhandled error on %s %s", request.method, request.url.path)
         detail = {"ok": False, "error": str(exc)}
         if logging.DEBUG:
             detail["trace"] = traceback.format_exc()

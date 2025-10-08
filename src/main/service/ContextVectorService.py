@@ -7,10 +7,10 @@ import uuid
 from typing import List, Optional, Dict, Any
 
 from neo4j import GraphDatabase, Driver
-import boto3
 
 from src.main.utils.SplitByMd import split_by_markdown_heading
 from src.main.service.TextPreprocessingService import TextPreprocessingService
+from src.main.llm.AgentCoreProvider import AgentCoreProvider
 
 
 class ContextVectorService:
@@ -30,35 +30,21 @@ class ContextVectorService:
         # AWS Bedrock (Cohere)
         self.aws_region = aws_region or os.getenv("AWS_REGION", "ap-southeast-2")
         self.embed_model_id = embed_model_id or os.getenv("EMBED_MODEL", "cohere.embed-english-v3")
-        self.bedrock = boto3.client("bedrock-runtime", region_name=self.aws_region)
         self.expected_embed_dim = expected_embed_dim or 1024
 
         # Neo4j driver
         self.driver: Driver = GraphDatabase.driver(self.neo4j_uri, auth=(self.neo4j_user, self.neo4j_password))
         self.preprocessor = TextPreprocessingService()
+        self.llm = AgentCoreProvider()
 
     # ------------------------ core ops ------------------------
 
     def embed(self, text: str) -> List[float]:
-        body = {"texts": [text], "input_type": "search_document"}
-        resp = self.bedrock.invoke_model(
-            modelId=self.embed_model_id,
-            body=json.dumps(body).encode("utf-8"),
-            contentType="application/json",
-            accept="application/json",
-        )
-        payload = json.loads(resp["body"].read())
-        embs = payload.get("embeddings")
-        if not embs:
-            raise ValueError(f"No 'embeddings' in Cohere response: {payload}")
-        first = embs[0]
-        vec = first.get("embedding") if isinstance(first, dict) else first
-
-        if len(vec) != self.expected_embed_dim:
-            raise ValueError(
-                f"Embedding dim mismatch: got {len(vec)}, expected {self.expected_embed_dim}. "
-            )
-        return vec
+        # Use AgentCoreProvider for embeddings
+        vectors = self.llm.embed([text])
+        if len(vectors[0]) != self.expected_embed_dim:
+            raise ValueError(f"Embedding dim mismatch: expected {self.expected_embed_dim}, got {len(vectors[0])}")
+        return vectors[0]
 
     # ------------------------ public API for controller ------------------------
 
