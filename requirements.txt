@@ -1,3 +1,4 @@
+moviepy
 boto3
 bedrock-agentcore
 agentcore
@@ -15,3 +16,7 @@ filelock~=3.18.0
 uvicorn~=0.34.0
 starlette~=0.46.1
 weasyprint~=66.0
+moviepy
+opencv-python
+sounddevice
+scipy
