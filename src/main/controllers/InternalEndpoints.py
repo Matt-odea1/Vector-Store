@@ -3,9 +3,8 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from fastapi import APIRouter, Body, Depends, UploadFile, File, Form
+from fastapi import APIRouter, Body, Depends, UploadFile, File, Form, HTTPException
 
-from ..dtos.UploadFileRequest import UploadFileRequest
 from ..dtos.UploadRequest import UploadRequest
 from ..dtos.DeleteRequest import DeleteRequest
 from ..dtos.ListDocumentsRequest import ListDocumentsRequest
@@ -14,6 +13,11 @@ from src.main.service.ChatService import ChatService, ChatServiceError
 from src.main.dtos.ChatRequest import ChatRequest
 from src.main.dtos.ChatResponse import ChatResponse
 from src.main.service.FileToTextService import FileToTextService
+
+# Add Deepgram Speech-to-Text import and tempfile/os
+import tempfile
+import os
+from src.main.service.SpeechToTextService import DeepgramTranscribeService
 
 
 # --- Dependency injection ------------------------------------------------------
@@ -97,6 +101,48 @@ def upload_file_context(
         scope=upload_dto.Scope
     )
     return {"ok": True, **result}
+
+
+# --- New endpoint: transcribe uploaded WAV and return transcript -----------------
+@chat_router.post("/transcribe", status_code=200)
+async def transcribe_uploaded_audio(
+    DocumentTitle: str = Form(...),
+    File: UploadFile = File(...),
+):
+    """
+    Minimal endpoint that accepts a document title and an uploaded WAV file (.wav),
+    streams the upload to a temporary file, calls the Deepgram transcription service,
+    and returns the transcript.
+
+    Returns JSON: {"documentTitle": str, "transcript": str}
+    """
+    # Save upload to a temporary file because DeepgramTranscribeService expects a file path
+    contents = await File.read()
+    # Require .wav files
+    ext = os.path.splitext(File.filename)[1].lower()
+    if ext != ".wav":
+        raise HTTPException(status_code=400, detail="Only .wav files are accepted for this endpoint")
+
+    tmp = tempfile.NamedTemporaryFile(suffix=ext, delete=False)
+    try:
+        tmp.write(contents)
+        tmp.flush()
+        tmp_path = tmp.name
+    finally:
+        tmp.close()
+
+    try:
+        svc = DeepgramTranscribeService()
+        transcript = svc.transcribe(tmp_path)
+        return {"documentTitle": DocumentTitle, "transcript": transcript}
+    except Exception as e:
+        return {"error": f"Transcription failed: {e}"}
+    finally:
+        # Clean up temp file
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
 
 
 # --- Chat API models ----------------------------------------------------------
