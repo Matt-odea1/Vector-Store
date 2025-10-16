@@ -45,9 +45,9 @@ class AudioRecorder:
         print(f"Audio saved to {self.output_path}")
 
     # Example usage/test
-    # if __name__ == "__main__":
-    #     recorder = AudioRecorder(output_path="test.wav", duration=5)
-    #     recorder.record()
-    #     print("Audio saved to test.wav")
+if __name__ == "__main__":
+    recorder = AudioRecorder(output_path="test.wav", duration=5)
+    recorder.record()
+    print("Audio saved to test.wav")
 
 # TODO: Handle edge cases (microphone not found, permission errors, etc.)
