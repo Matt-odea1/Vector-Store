@@ -13,7 +13,7 @@ class ChatServiceError(Exception):
 
 DEFAULT_SYSTEM = (
     "You are a helpful assistant. Use the provided context to answer accurately and concisely. "
-    "If the context is insufficient, say so."
+    "If the context is insufficient, please infer from the surrounding context and user information to be helpful. If you think you be more helpful by asking clarifying questions then do so. Return the output in plaintext format."
 )
 
 class ChatService:
