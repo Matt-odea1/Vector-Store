@@ -1,0 +1,231 @@
+"""
+QuestionGenerationService: Generates oral exam questions from assignment briefs and student code.
+- Loads question generation prompt template
+- Calls LLM to generate questions in JSON format
+- Saves output as both JSON and CSV files
+"""
+import json
+import csv
+import os
+from pathlib import Path
+from typing import List, Dict, Any, Optional
+
+from src.main.llm.AgentCoreProvider import AgentCoreProvider
+from src.main.utils.ReadPrompt import read_prompt
+
+
+class QuestionGenerationError(Exception):
+    """Raised when question generation fails."""
+    pass
+
+
+class QuestionGenerationService:
+    def __init__(
+        self,
+        agent_client: Optional[AgentCoreProvider] = None,
+        output_dir: str = "outputs/questions"
+    ):
+        """
+        Initialize the question generation service.
+        
+        Args:
+            agent_client: LLM provider (defaults to AgentCoreProvider)
+            output_dir: Directory to save output files
+        """
+        self.agent_client = agent_client or AgentCoreProvider()
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Load the question generation prompt template
+        prompt_file = Path(__file__).resolve().parents[3] / "question_generation_prompt.md"
+        self.prompt_template = read_prompt(prompt_file)
+
+    def generate_questions(
+        self,
+        assignment_brief: str,
+        student_code: str,
+        student_name: str
+    ) -> Dict[str, Any]:
+        """
+        Generate questions from assignment brief and student code.
+        
+        Args:
+            assignment_brief: The assignment description/requirements
+            student_code: The student's Python code submission
+            student_name: Student identifier for filename generation
+            
+        Returns:
+            Dictionary with:
+                - questions: List of question dicts
+                - json_file_path: Path to saved JSON file
+                - csv_file_path: Path to saved CSV file
+                - questions_count: Total number of questions
+                - tokens_used: Token usage (if available)
+        """
+        print(f"[QuestionGenerationService] Generating questions for student: {student_name}")
+        
+        # Build the complete prompt
+        system_prompt = self._build_system_prompt()
+        user_prompt = self._build_user_prompt(assignment_brief, student_code)
+        
+        # Prepare messages for the LLM
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"text": system_prompt},
+                    {"text": user_prompt}
+                ]
+            }
+        ]
+        
+        # Call the LLM
+        try:
+            result = self.agent_client.chat(messages)
+        except Exception as e:
+            raise QuestionGenerationError(f"LLM call failed: {e}")
+        
+        # Extract the response text
+        if isinstance(result, dict):
+            response_text = result.get("text") or result.get("content") or result.get("answer") or ""
+            tokens_used = result.get("tokens_input")
+        else:
+            response_text = str(result)
+            tokens_used = None
+        
+        # Parse JSON from response
+        questions = self._parse_json_response(response_text)
+        
+        # Save to files
+        json_path = self._save_json(questions, student_name)
+        csv_path = self._save_csv(questions, student_name)
+        
+        print(f"[QuestionGenerationService] Generated {len(questions)} questions")
+        print(f"[QuestionGenerationService] Saved to: {json_path} and {csv_path}")
+        
+        return {
+            "questions": questions,
+            "json_file_path": str(json_path),
+            "csv_file_path": str(csv_path),
+            "questions_count": len(questions),
+            "tokens_used": tokens_used
+        }
+
+    def _build_system_prompt(self) -> str:
+        """Build the system prompt with JSON schema requirements."""
+        json_schema = """
+You must respond with ONLY a valid JSON array. Each question object must have these exact fields:
+{
+  "question_number": <integer>,
+  "question_type": "specific" or "general",
+  "question": "<the question text>",
+  "rationale": "<why this question tests important concepts>",
+  "code_reference": "<specific code snippet being examined, or empty string for general questions>"
+}
+
+Output format example:
+[
+  {
+    "question_number": 1,
+    "question_type": "specific",
+    "question": "Can you explain how your for loop on line 5 iterates through the list?",
+    "rationale": "Tests understanding of loop mechanics and list iteration",
+    "code_reference": "for item in my_list:"
+  },
+  {
+    "question_number": 6,
+    "question_type": "general",
+    "question": "What is the difference between a list and a tuple in Python?",
+    "rationale": "Tests fundamental understanding of data structures",
+    "code_reference": ""
+  }
+]
+
+Remember:
+- Generate exactly 5 SPECIFIC questions (about the student's code)
+- Generate exactly 3 GENERAL questions (about programming concepts)
+- Number them 1-8 sequentially
+- Return ONLY the JSON array, no other text
+"""
+        return self.prompt_template + "\n\n" + json_schema
+
+    def _build_user_prompt(self, assignment_brief: str, student_code: str) -> str:
+        """Build the user prompt with assignment and code."""
+        return f"""
+**ASSIGNMENT BRIEF:**
+{assignment_brief}
+
+---
+
+**STUDENT SUBMISSION:**
+```python
+{student_code}
+```
+
+---
+
+Generate the questions in JSON format as specified.
+"""
+
+    def _parse_json_response(self, response_text: str) -> List[Dict[str, Any]]:
+        """
+        Parse JSON from LLM response, handling markdown code blocks if present.
+        
+        Args:
+            response_text: Raw response from LLM
+            
+        Returns:
+            List of question dictionaries
+        """
+        # Try to find JSON in markdown code blocks
+        if "```json" in response_text:
+            start = response_text.find("```json") + 7
+            end = response_text.find("```", start)
+            json_str = response_text[start:end].strip()
+        elif "```" in response_text:
+            start = response_text.find("```") + 3
+            end = response_text.find("```", start)
+            json_str = response_text[start:end].strip()
+        else:
+            json_str = response_text.strip()
+        
+        # Parse JSON
+        try:
+            questions = json.loads(json_str)
+        except json.JSONDecodeError as e:
+            raise QuestionGenerationError(f"Failed to parse JSON response: {e}\nResponse: {response_text[:500]}")
+        
+        # Validate it's a list
+        if not isinstance(questions, list):
+            raise QuestionGenerationError(f"Expected JSON array, got: {type(questions)}")
+        
+        return questions
+
+    def _save_json(self, questions: List[Dict[str, Any]], student_name: str) -> Path:
+        """Save questions to JSON file."""
+        filename = f"{student_name}_questions.json"
+        filepath = self.output_dir / filename
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(questions, f, indent=2, ensure_ascii=False)
+        
+        return filepath
+
+    def _save_csv(self, questions: List[Dict[str, Any]], student_name: str) -> Path:
+        """Save questions to CSV file."""
+        filename = f"{student_name}_questions.csv"
+        filepath = self.output_dir / filename
+        
+        # Define CSV columns
+        fieldnames = ['question_number', 'question_type', 'question', 'rationale', 'code_reference']
+        
+        with open(filepath, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            
+            for q in questions:
+                # Ensure all fields exist (fill with empty string if missing)
+                row = {field: q.get(field, '') for field in fieldnames}
+                writer.writerow(row)
+        
+        return filepath
