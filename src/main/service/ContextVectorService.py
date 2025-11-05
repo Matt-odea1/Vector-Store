@@ -1,8 +1,7 @@
-# src/main/service/ContextVectorService.py
 from __future__ import annotations
 
 import os
-import json
+
 import uuid
 from typing import List, Optional, Dict, Any
 
@@ -22,6 +21,7 @@ class ContextVectorService:
         aws_region: str | None = None,
         embed_model_id: str | None = None,
         expected_embed_dim: Optional[int] = None,   # defaults to 1024 if None
+        embed_max_chars: Optional[int] = None,      # max characters to send to embed API
     ) -> None:
         self.neo4j_uri = neo4j_uri or os.getenv("NEO4J_URI")
         self.neo4j_user = neo4j_user or os.getenv("NEO4J_USERNAME")
@@ -31,6 +31,8 @@ class ContextVectorService:
         self.aws_region = aws_region or os.getenv("AWS_REGION", "ap-southeast-2")
         self.embed_model_id = embed_model_id or os.getenv("EMBED_MODEL", "cohere.embed-english-v3")
         self.expected_embed_dim = expected_embed_dim or 1024
+        # Embed max chars: provider limits (default 2048 based on observed error)
+        self.embed_max_chars = embed_max_chars or int(os.getenv("EMBED_MAX_CHARS", "2048"))
 
         # Neo4j driver
         self.driver: Driver = GraphDatabase.driver(self.neo4j_uri, auth=(self.neo4j_user, self.neo4j_password))
@@ -43,6 +45,13 @@ class ContextVectorService:
         # Defensive: ensure text is a string
         if not isinstance(text, str):
             text = str(text)
+
+        # Truncate long inputs to provider max length to avoid ValidationException
+        # Default behavior: truncate at the end (keep the start). This mirrors a "truncate=END" strategy.
+        if self.embed_max_chars and len(text) > self.embed_max_chars:
+            print(f"[warn] input too long for embed API (len={len(text)}); truncating to {self.embed_max_chars} chars")
+            text = text[: self.embed_max_chars]
+
         vectors = self.llm.embed([text])
         if isinstance(vectors, dict) and "vectors" in vectors:
             vectors = vectors["vectors"]
@@ -59,7 +68,7 @@ class ContextVectorService:
         Uploads a document, splitting into chunks. All chunks share the same document_id.
         """
         edited_text = self.preprocessor.preprocess_to_markdown(text)
-        print("edited text:", edited_text[:200])
+        print("edited text:", edited_text)
         chunks = split_by_markdown_heading(edited_text) or [edited_text]
         document_id = uuid.uuid4().hex
 

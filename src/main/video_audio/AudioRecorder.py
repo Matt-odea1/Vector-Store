@@ -46,7 +46,7 @@ class AudioRecorder:
 
     # Example usage/test
 if __name__ == "__main__":
-    recorder = AudioRecorder(output_path="test.wav", duration=5)
+    recorder = AudioRecorder(output_path="test.wav", duration=10)
     recorder.record()
     print("Audio saved to test.wav")
 
