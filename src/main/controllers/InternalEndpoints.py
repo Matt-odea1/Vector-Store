@@ -23,6 +23,14 @@ from src.main.service.SpeechToTextService import DeepgramTranscribeService
 from src.main.service.QuestionGenerationService import QuestionGenerationService, QuestionGenerationError
 from src.main.dtos.GenerateQuestionsResponse import GenerateQuestionsResponse
 
+# Response Evaluation Service imports
+from src.main.service.ResponseEvaluationService import ResponseEvaluationService, ResponseEvaluationError
+from src.main.dtos.EvaluateResponsesRequest import EvaluateResponsesRequest
+from src.main.dtos.EvaluateResponsesResponse import (
+    EvaluationJobResponse, 
+    EvaluationStatusResponse
+)
+
 
 # --- Dependency injection ------------------------------------------------------
 
@@ -56,9 +64,19 @@ def get_question_service() -> QuestionGenerationService:
     return _question_service_singleton()
 
 
+# --- ResponseEvaluationService DI ---------------------------------------------
+@lru_cache(maxsize=1)
+def _evaluation_service_singleton() -> ResponseEvaluationService:
+    return ResponseEvaluationService()
+
+def get_evaluation_service() -> ResponseEvaluationService:
+    return _evaluation_service_singleton()
+
+
 router = APIRouter(prefix="/internal/context", tags=["context"])
 chat_router = APIRouter(prefix="/internal/chat", tags=["chat"])
 questions_router = APIRouter(prefix="/internal/questions", tags=["questions"])
+evaluations_router = APIRouter(prefix="/internal/evaluations", tags=["evaluations"])
 
 
 # --- Endpoints -----------------------------------------------------------------
@@ -219,5 +237,68 @@ async def generate_questions_endpoint(
         raise HTTPException(status_code=500, detail=f"Question generation failed: {str(e)}")
     except UnicodeDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Failed to read file as UTF-8: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+# --- Response Evaluation Endpoints -------------------------------------------
+
+@evaluations_router.post("/evaluate", response_model=EvaluationJobResponse, status_code=202)
+async def start_evaluation(
+    request: EvaluateResponsesRequest = Body(...),
+    svc: ResponseEvaluationService = Depends(get_evaluation_service)
+):
+    """
+    Start async evaluation of student responses to oral exam questions.
+    
+    Accepts:
+    - student_name: Student identifier
+    - responses_file_name: CSV file name in outputs/questions/
+    
+    Returns:
+    - Job ID for tracking the evaluation
+    - Use /status/{job_id} to check progress and get results
+    """
+    try:
+        result = svc.start_evaluation(
+            student_name=request.student_name,
+            responses_file_name=request.responses_file_name
+        )
+        
+        return EvaluationJobResponse(
+            ok=True,
+            job_id=result["job_id"],
+            status=result["status"],
+            message="Evaluation started. Use the job_id to check status.",
+            student_name=result["student_name"],
+            total_questions=result["total_questions"],
+            estimated_time_seconds=result["estimated_time_seconds"]
+        )
+        
+    except ResponseEvaluationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@evaluations_router.get("/status/{job_id}", response_model=EvaluationStatusResponse)
+async def get_evaluation_status(
+    job_id: str,
+    svc: ResponseEvaluationService = Depends(get_evaluation_service)
+):
+    """
+    Get the current status of an evaluation job.
+    
+    Returns:
+    - Processing: Progress information
+    - Completed: Full evaluation results with file paths
+    - Failed: Error information
+    """
+    try:
+        status = svc.get_job_status(job_id)
+        return EvaluationStatusResponse(**status)
+        
+    except ResponseEvaluationError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")

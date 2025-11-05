@@ -1,3 +1,8 @@
+# test-scripts
+test_scripts/
+test_inputs/
+test_outputs/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
