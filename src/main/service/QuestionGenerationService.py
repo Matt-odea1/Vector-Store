@@ -23,7 +23,7 @@ class QuestionGenerationService:
     def __init__(
         self,
         agent_client: Optional[AgentCoreProvider] = None,
-        output_dir: str = "outputs/questions"
+        output_dir: str = "test_outputs/questions"
     ):
         """
         Initialize the question generation service.
@@ -37,7 +37,7 @@ class QuestionGenerationService:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
         # Load the question generation prompt template
-        prompt_file = Path(__file__).resolve().parents[3] / "question_generation_prompt.md"
+        prompt_file = Path(__file__).resolve().parents[3] / "prompts" / "question_generation_prompt.md"
         self.prompt_template = read_prompt(prompt_file)
 
     def generate_questions(

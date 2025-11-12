@@ -26,7 +26,8 @@ class ResponseEvaluationService:
     def __init__(
         self,
         agent_client: Optional[AgentCoreProvider] = None,
-        base_output_dir: str = "outputs/evaluations"
+        base_output_dir: str = "test_outputs/evaluations",
+        responses_dir: str = "test_outputs/questions"
     ):
         """
         Initialize the response evaluation service.
@@ -34,19 +35,22 @@ class ResponseEvaluationService:
         Args:
             agent_client: LLM provider (defaults to AgentCoreProvider)
             base_output_dir: Base directory for evaluation outputs
+            responses_dir: Directory where response CSV files are located
         """
         self.agent_client = agent_client or AgentCoreProvider()
         self.base_output_dir = Path(base_output_dir)
         self.base_output_dir.mkdir(parents=True, exist_ok=True)
+        self.responses_dir = Path(responses_dir)
         
         # In-memory job store
         self.jobs: Dict[str, Dict[str, Any]] = {}
         
         # Load evaluation prompt
-        prompt_file = Path(__file__).resolve().parents[3] / "response_evaluation_prompt.md"
+        prompt_file = Path(__file__).resolve().parents[3] / "prompts" / "response_evaluation_prompt.md"
         self.evaluation_prompt = read_prompt(prompt_file)
         
         print(f"[ResponseEvaluationService] Initialized with output dir: {self.base_output_dir}")
+        print(f"[ResponseEvaluationService] Reading responses from: {self.responses_dir}")
 
     def start_evaluation(
         self,
@@ -58,13 +62,13 @@ class ResponseEvaluationService:
         
         Args:
             student_name: Student identifier
-            responses_file_name: Name of CSV file in outputs/questions/
+            responses_file_name: Name of CSV file in test_outputs/questions/
             
         Returns:
             Dictionary with job_id and initial status
         """
         # Build full path to responses file
-        responses_path = Path("outputs/questions") / responses_file_name
+        responses_path = self.responses_dir / responses_file_name
         
         if not responses_path.exists():
             raise ResponseEvaluationError(f"Responses file not found: {responses_path}")

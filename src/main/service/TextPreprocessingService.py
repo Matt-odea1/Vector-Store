@@ -18,7 +18,7 @@ class TextPreprocessingService:
     ) -> None:
         self.region = region or os.getenv("AWS_REGION", "ap-southeast-2")
         self.model_id = model_id or os.getenv("CHAT_MODEL", "amazon.nova-lite-v1:0")
-        self.prompt_path = Path(prompt_path or os.getenv("PROMPT_MD", "prompt.md")).resolve()
+        self.prompt_path = Path(prompt_path or os.getenv("PROMPT_MD", "prompts/vector_store_prompt.md")).resolve()
         self.llm = AgentCoreProvider()
 
     def _split_text_into_chunks(self, header: str, text: str, max_chars: int) -> list[str]:

@@ -2,13 +2,13 @@ from pathlib import Path
 
 def read_prompt(prompt_path) -> str:
     """
-    Loads prompt text from prompt.md. Raises a clear error if not found.
+    Loads prompt text from the specified path. Raises a clear error if not found.
     """
     if not prompt_path.is_file():
         candidates = [
             prompt_path,
-            Path.cwd() / "prompt.md",
-            Path(__file__).resolve().parents[3] / "prompt.md",
+            Path.cwd() / "prompts" / prompt_path.name,
+            Path(__file__).resolve().parents[3] / "prompts" / prompt_path.name,
         ]
         for c in candidates:
             if c.is_file():
@@ -17,7 +17,7 @@ def read_prompt(prompt_path) -> str:
 
     if not prompt_path.is_file():
         raise FileNotFoundError(
-            f"prompt.md not found. Looked at: {prompt_path}"
+            f"Prompt file not found. Looked at: {prompt_path}"
         )
 
     return prompt_path.read_text(encoding="utf-8")

@@ -12,6 +12,8 @@ from src.main.service.ContextVectorService import ContextVectorService
 from src.main.service.ChatService import ChatService, ChatServiceError
 from src.main.dtos.ChatRequest import ChatRequest
 from src.main.dtos.ChatResponse import ChatResponse
+from src.main.dtos.ChatHistoryResponse import ChatHistoryResponse, ChatMessage
+from src.main.dtos.SessionListResponse import SessionListResponse, SessionInfo
 from src.main.service.FileToTextService import FileToTextService
 
 # Add Deepgram Speech-to-Text import and tempfile/os
@@ -31,6 +33,9 @@ from src.main.dtos.EvaluateResponsesResponse import (
     EvaluationStatusResponse
 )
 
+# Conversation Memory
+from src.main.agentcore_setup.memory import ConversationMemory
+
 
 # --- Dependency injection ------------------------------------------------------
 
@@ -43,13 +48,24 @@ def get_context_service() -> ContextVectorService:
     return _service_singleton()
 
 
+# --- ConversationMemory DI ----------------------------------------------------
+@lru_cache(maxsize=1)
+def _memory_singleton() -> ConversationMemory:
+    return ConversationMemory(max_sessions=1000)
+
+def get_memory_service() -> ConversationMemory:
+    return _memory_singleton()
+
+
 # --- ChatService DI -----------------------------------------------------------
 from src.main.llm.AgentCoreProvider import AgentCoreProvider
 
+@lru_cache(maxsize=1)
 def _chat_service_singleton() -> ChatService:
     vector_service = _service_singleton()
-    agent_client = AgentCoreProvider()  # Wrap as needed
-    return ChatService(vector_service, agent_client)
+    agent_client = AgentCoreProvider()
+    memory = _memory_singleton()  # NEW: Inject memory
+    return ChatService(vector_service, agent_client, memory)
 
 def get_chat_service() -> ChatService:
     return _chat_service_singleton()
@@ -183,12 +199,115 @@ async def transcribe_uploaded_audio(
 @chat_router.post("", response_model=ChatResponse)
 def chat_endpoint(request: ChatRequest = Body(...), svc: ChatService = Depends(get_chat_service)):
     try:
-        result = svc.chat(query=request.query, top_k=request.top_k or 5, session_id=request.session_id)
+        result = svc.chat(
+            query=request.query, 
+            top_k=request.top_k or 5, 
+            session_id=request.session_id,
+            include_history=request.include_history
+        )
         return ChatResponse(**result)
     except ChatServiceError as e:
         return {"error": str(e)}
     except Exception as e:
         return {"error": f"Unexpected error: {e}"}
+
+
+# --- Conversation History Endpoints -------------------------------------------
+
+@chat_router.get("/history/{session_id}", response_model=ChatHistoryResponse)
+def get_history_endpoint(
+    session_id: str,
+    max_messages: int = None,
+    memory: ConversationMemory = Depends(get_memory_service)
+):
+    """
+    Retrieve conversation history for a specific session.
+    
+    Args:
+        session_id: Session identifier
+        max_messages: Optional limit on number of messages to return (most recent first)
+    
+    Returns:
+        ChatHistoryResponse with session info and message history
+    """
+    # Check if session exists
+    if not memory.session_exists(session_id):
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+    
+    # Get history and stats
+    messages = memory.get_history(session_id, max_messages=max_messages)
+    stats = memory.get_session_stats(session_id)
+    
+    # Convert to ChatMessage DTOs
+    message_dtos = [
+        ChatMessage(
+            role=msg["role"],
+            content=msg["content"],
+            timestamp=msg["timestamp"],
+            tokens=msg.get("tokens"),
+            context_ids=msg.get("context_ids", [])
+        )
+        for msg in messages
+    ]
+    
+    return ChatHistoryResponse(
+        session_id=session_id,
+        messages=message_dtos,
+        total_messages=stats["message_count"],
+        created_at=stats["created_at"],
+        last_accessed=stats["last_accessed"],
+        total_tokens=stats["total_tokens"]
+    )
+
+
+@chat_router.get("/sessions", response_model=SessionListResponse)
+def list_sessions_endpoint(memory: ConversationMemory = Depends(get_memory_service)):
+    """
+    List all active conversation sessions.
+    
+    Returns:
+        SessionListResponse with list of all sessions and their metadata
+    """
+    sessions = memory.list_sessions()
+    
+    # Convert to SessionInfo DTOs
+    session_dtos = [
+        SessionInfo(
+            session_id=s["session_id"],
+            message_count=s["message_count"],
+            created_at=s["created_at"],
+            last_accessed=s["last_accessed"],
+            total_tokens=s["total_tokens"]
+        )
+        for s in sessions
+    ]
+    
+    return SessionListResponse(
+        sessions=session_dtos,
+        total=len(session_dtos)
+    )
+
+
+@chat_router.delete("/history/{session_id}")
+def clear_history_endpoint(
+    session_id: str,
+    memory: ConversationMemory = Depends(get_memory_service)
+):
+    """
+    Clear conversation history for a specific session.
+    
+    Args:
+        session_id: Session identifier to clear
+    
+    Returns:
+        Confirmation message
+    """
+    memory.clear_session(session_id)
+    return {
+        "ok": True,
+        "session_id": session_id,
+        "message": f"Session '{session_id}' cleared successfully"
+    }
 
 
 # --- Question Generation Endpoints --------------------------------------------
