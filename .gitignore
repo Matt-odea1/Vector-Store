@@ -3,6 +3,10 @@ test_scripts/
 test_inputs/
 test_outputs/
 
+# Documentation
+docs/
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
