@@ -1,0 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #root {
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+}
+
+@layer components {
+  /* Message animations */
+  .message-enter {
+    @apply animate-slide-up;
+  }
+
+  /* Code block styling */
+  .prose pre {
+    @apply bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto my-3;
+  }
+
+  .prose code {
+    @apply text-sm font-mono;
+  }
+
+  .prose :not(pre) > code {
+    @apply bg-pink-50 text-pink-600 px-1.5 py-0.5 rounded text-sm font-medium;
+  }
+
+  /* Markdown styling for AI messages */
+  .markdown-content {
+    @apply text-gray-800 leading-relaxed;
+  }
+
+  .markdown-content h1,
+  .markdown-content h2,
+  .markdown-content h3 {
+    @apply font-semibold mt-4 mb-2 text-gray-900;
+  }
+
+  .markdown-content h1 {
+    @apply text-xl;
+  }
+
+  .markdown-content h2 {
+    @apply text-lg;
+  }
+
+  .markdown-content h3 {
+    @apply text-base;
+  }
+
+  .markdown-content p {
+    @apply mb-3 last:mb-0;
+  }
+
+  .markdown-content ul,
+  .markdown-content ol {
+    @apply ml-4 mb-3 space-y-1;
+  }
+
+  .markdown-content li {
+    @apply leading-relaxed;
+  }
+
+  .markdown-content a {
+    @apply text-primary-600 hover:text-primary-700 underline;
+  }
+
+  .markdown-content blockquote {
+    @apply border-l-4 border-gray-300 pl-4 italic text-gray-700 my-3;
+  }
+
+  .markdown-content table {
+    @apply w-full border-collapse my-4;
+  }
+
+  .markdown-content th,
+  .markdown-content td {
+    @apply border border-gray-300 px-3 py-2 text-left;
+  }
+
+  .markdown-content th {
+    @apply bg-gray-100 font-semibold;
+  }
+}
