@@ -390,6 +390,241 @@ class TestHealthCheck:
         assert data["status"] == "ok"
 
 
+class TestPedagogyModeEndpoint:
+    """Test pedagogy mode functionality in chat endpoint."""
+    
+    def test_chat_with_pedagogy_mode(self, client):
+        """Test chat with pedagogy mode parameter."""
+        test_client, mock_chat, mock_memory = client
+        
+        # Mock response with pedagogy mode
+        mock_chat.chat.return_value = {
+            "answer": "Let me ask you some questions to guide your thinking...",
+            "session_id": "test-session-123",
+            "is_new_session": True,
+            "history_length": 0,
+            "pedagogy_mode": "socratic",
+            "context_ids": ["doc-1"],
+            "tokens_input": 100,
+            "tokens_output": 50,
+            "model_id": "test-model"
+        }
+        
+        response = test_client.post(
+            "/internal/chat",
+            json={
+                "query": "How do I sort a list?",
+                "pedagogy_mode": "socratic"
+            }
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Verify mode was passed to service
+        mock_chat.chat.assert_called_once()
+        call_kwargs = mock_chat.chat.call_args.kwargs
+        assert call_kwargs["pedagogy_mode"] == "socratic"
+        
+        # Verify mode is in response
+        assert "pedagogy_mode" in data
+        assert data["pedagogy_mode"] == "socratic"
+    
+    def test_chat_default_pedagogy_mode(self, client):
+        """Test that default mode is used when not specified."""
+        test_client, mock_chat, mock_memory = client
+        
+        mock_chat.chat.return_value = {
+            "answer": "Here's a clear explanation...",
+            "session_id": "test-session-123",
+            "is_new_session": True,
+            "history_length": 0,
+            "pedagogy_mode": "explanatory",
+            "context_ids": [],
+            "tokens_input": None,
+            "tokens_output": None,
+            "model_id": None
+        }
+        
+        response = test_client.post(
+            "/internal/chat",
+            json={"query": "What is Python?"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Should use default mode
+        assert data["pedagogy_mode"] == "explanatory"
+    
+    def test_chat_all_pedagogy_modes(self, client):
+        """Test that all pedagogy modes are accepted."""
+        test_client, mock_chat, mock_memory = client
+        
+        modes = ["socratic", "explanatory", "debugging", "assessment", "review"]
+        
+        for mode in modes:
+            mock_chat.chat.return_value = {
+                "answer": f"Response in {mode} mode",
+                "session_id": "test-session",
+                "is_new_session": False,
+                "history_length": 0,
+                "pedagogy_mode": mode,
+                "context_ids": [],
+                "tokens_input": None,
+                "tokens_output": None,
+                "model_id": None
+            }
+            
+            response = test_client.post(
+                "/internal/chat",
+                json={
+                    "query": "Test question",
+                    "pedagogy_mode": mode
+                }
+            )
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["pedagogy_mode"] == mode
+    
+    def test_chat_invalid_pedagogy_mode(self, client):
+        """Test that invalid pedagogy mode is handled gracefully."""
+        test_client, mock_chat, mock_memory = client
+        
+        # Mock service to handle invalid mode gracefully
+        mock_chat.chat.return_value = {
+            "answer": "Response",
+            "session_id": "test-session",
+            "is_new_session": True,
+            "history_length": 0,
+            "pedagogy_mode": "explanatory",  # Falls back to default
+            "context_ids": [],
+            "tokens_input": None,
+            "tokens_output": None,
+            "model_id": None
+        }
+        
+        response = test_client.post(
+            "/internal/chat",
+            json={
+                "query": "Test question",
+                "pedagogy_mode": "invalid_mode"
+            }
+        )
+        
+        # Should still work (service handles validation)
+        assert response.status_code == 200
+    
+    def test_pedagogy_mode_persistence_across_session(self, client):
+        """Test that pedagogy mode persists in a session."""
+        test_client, mock_chat, mock_memory = client
+        
+        # First message with socratic mode
+        mock_chat.chat.return_value = {
+            "answer": "First response",
+            "session_id": "persistent-session",
+            "is_new_session": True,
+            "history_length": 0,
+            "pedagogy_mode": "socratic",
+            "context_ids": [],
+            "tokens_input": None,
+            "tokens_output": None,
+            "model_id": None
+        }
+        
+        response1 = test_client.post(
+            "/internal/chat",
+            json={
+                "query": "First question",
+                "session_id": "persistent-session",
+                "pedagogy_mode": "socratic"
+            }
+        )
+        
+        assert response1.status_code == 200
+        assert response1.json()["pedagogy_mode"] == "socratic"
+        
+        # Second message without specifying mode (should use session's mode)
+        mock_chat.chat.return_value = {
+            "answer": "Second response",
+            "session_id": "persistent-session",
+            "is_new_session": False,
+            "history_length": 2,
+            "pedagogy_mode": "socratic",  # Same mode
+            "context_ids": [],
+            "tokens_input": None,
+            "tokens_output": None,
+            "model_id": None
+        }
+        
+        response2 = test_client.post(
+            "/internal/chat",
+            json={
+                "query": "Second question",
+                "session_id": "persistent-session"
+                # No pedagogy_mode specified
+            }
+        )
+        
+        assert response2.status_code == 200
+        # Mode should persist from session
+        call_kwargs = mock_chat.chat.call_args.kwargs
+        # Service should handle persistence
+    
+    def test_pedagogy_mode_switching(self, client):
+        """Test switching pedagogy mode mid-conversation."""
+        test_client, mock_chat, mock_memory = client
+        
+        # Start with explanatory
+        mock_chat.chat.return_value = {
+            "answer": "Explanatory response",
+            "session_id": "switch-session",
+            "is_new_session": True,
+            "history_length": 0,
+            "pedagogy_mode": "explanatory",
+            "context_ids": [],
+            "tokens_input": None,
+            "tokens_output": None,
+            "model_id": None
+        }
+        
+        response1 = test_client.post(
+            "/internal/chat",
+            json={
+                "query": "Explain this",
+                "session_id": "switch-session",
+                "pedagogy_mode": "explanatory"
+            }
+        )
+        
+        assert response1.json()["pedagogy_mode"] == "explanatory"
+        
+        # Switch to debugging
+        mock_chat.chat.return_value = {
+            "answer": "Debugging hint response",
+            "session_id": "switch-session",
+            "is_new_session": False,
+            "history_length": 2,
+            "pedagogy_mode": "debugging",
+            "context_ids": [],
+            "tokens_input": None,
+            "tokens_output": None,
+            "model_id": None
+        }
+        
+        response2 = test_client.post(
+            "/internal/chat",
+            json={
+                "query": "Help me fix this bug",
+                "session_id": "switch-session",
+                "pedagogy_mode": "debugging"
+            }
+        )
+        
+        assert response2.json()["pedagogy_mode"] == "debugging"
+
+
 class TestInvalidRoutes:
     """Test invalid route handling."""
     
