@@ -20,8 +20,8 @@ class AgentCoreClient:
         raise NotImplementedError("BedrockAgentCoreApp does not expose 'generate' directly. Implement model call here.")
 
     def chat(self, messages, model_id, **kwargs):
-        self.logger.info(f"chat called with model_id={model_id}")
-        self.logger.info(f"messages={messages}")
+        self.logger.debug(f"chat called with model_id={model_id}")
+        self.logger.debug(f"messages={messages}")
         # Amazon Titan (nova-lite-v1:0) expects 'messages' API format
         if model_id == "amazon.nova-lite-v1:0":
             # Validate messages structure
@@ -32,7 +32,7 @@ class AgentCoreClient:
                 self.logger.error("Nova chat: First message must have role 'user'.")
                 raise ValueError("Nova chat: First message must have role 'user'.")
             payload = json.dumps({"messages": messages})
-            self.logger.info(f"Nova payload={payload}")
+            self.logger.debug(f"Nova payload={payload}")
             try:
                 response = self.bedrock_client.invoke_model(
                     modelId=model_id,
@@ -41,7 +41,7 @@ class AgentCoreClient:
                     accept="application/json"
                 )
                 body = json.loads(response["body"].read())
-                self.logger.info(f"Nova response={body}")
+                self.logger.debug(f"Nova response={body}")
             except Exception as e:
                 self.logger.error(f"Nova Bedrock error: {e}")
                 raise
@@ -64,7 +64,7 @@ class AgentCoreClient:
             self.logger.error("Bedrock chat: 'messages' must be a non-empty list.")
             raise ValueError("Bedrock chat: 'messages' must be a non-empty list.")
         payload = json.dumps({"messages": messages})
-        self.logger.info(f"Non-Titan payload={payload}")
+        self.logger.debug(f"Non-Titan payload={payload}")
         try:
             response = self.bedrock_client.invoke_model(
                 modelId=model_id,
@@ -73,7 +73,7 @@ class AgentCoreClient:
                 accept="application/json"
             )
             body = json.loads(response["body"].read())
-            self.logger.info(f"Non-Titan response={body}")
+            self.logger.debug(f"Non-Titan response={body}")
         except Exception as e:
             self.logger.error(f"Non-Titan Bedrock error: {e}")
             raise
@@ -95,7 +95,7 @@ class AgentCoreClient:
                 raise ValueError("Cohere embed: 'texts' must be a non-empty list.")
             payload = json.dumps({"texts": texts,
                                   "input_type": "search_document"})
-            self.logger.info(f"Cohere embed payload={payload}")
+            self.logger.debug(f"Cohere embed payload={payload}")
             try:
                 response = self.bedrock_client.invoke_model(
                     modelId=model_id,
@@ -104,7 +104,7 @@ class AgentCoreClient:
                     accept="application/json"
                 )
                 body = json.loads(response["body"].read())
-                self.logger.info(f"Cohere embed response={body}")
+                self.logger.debug(f"Cohere embed response={body}")
             except Exception as e:
                 self.logger.error(f"Cohere embed Bedrock error: {e}")
                 raise

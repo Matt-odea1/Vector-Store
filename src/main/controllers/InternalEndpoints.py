@@ -203,7 +203,8 @@ def chat_endpoint(request: ChatRequest = Body(...), svc: ChatService = Depends(g
             query=request.query, 
             top_k=request.top_k or 5, 
             session_id=request.session_id,
-            include_history=request.include_history
+            include_history=request.include_history,
+            pedagogy_mode=request.pedagogy_mode  # NEW: Pass pedagogy mode
         )
         return ChatResponse(**result)
     except ChatServiceError as e:

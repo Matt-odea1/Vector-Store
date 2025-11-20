@@ -149,8 +149,19 @@ class ConversationMemory:
             "message_count": len(session["messages"]),
             "created_at": session["created_at"],
             "last_accessed": session["last_accessed"],
-            "total_tokens": session["total_tokens"]
+            "total_tokens": session["total_tokens"],
+            "pedagogy_mode": session.get("pedagogy_mode", "explanatory")
         }
+
+    def get_session_stats(self, session_id: str) -> Dict[str, Any]:
+        """
+        Alias for get_session_info for backward compatibility.
+        
+        Returns:
+            Dict with session metadata (empty dict if session doesn't exist)
+        """
+        info = self.get_session_info(session_id)
+        return info if info is not None else {}
 
     def list_sessions(self) -> List[Dict[str, Any]]:
         """
@@ -176,6 +187,35 @@ class ConversationMemory:
             logger.info(f"Cleared session {session_id[:8]}...")
             return True
         return False
+
+    def set_pedagogy_mode(self, session_id: str, mode: str) -> None:
+        """
+        Set the pedagogy mode for a session.
+        
+        Args:
+            session_id: Session identifier
+            mode: Pedagogy mode (socratic, explanatory, debugging, assessment, review)
+        """
+        if session_id not in self.sessions:
+            self._create_session(session_id)
+        
+        self.sessions[session_id]["pedagogy_mode"] = mode
+        logger.debug(f"Set pedagogy mode for session {session_id[:8]}... to '{mode}'")
+
+    def get_pedagogy_mode(self, session_id: str) -> str:
+        """
+        Get the pedagogy mode for a session.
+        
+        Args:
+            session_id: Session identifier
+        
+        Returns:
+            Pedagogy mode string (defaults to 'explanatory' if not set)
+        """
+        if session_id not in self.sessions:
+            return "explanatory"
+        
+        return self.sessions[session_id].get("pedagogy_mode", "explanatory")
 
     def prune_old_sessions(self, max_age_hours: int = 24) -> int:
         """
@@ -258,7 +298,8 @@ class ConversationMemory:
             "messages": [],
             "created_at": now,
             "last_accessed": now,
-            "total_tokens": 0
+            "total_tokens": 0,
+            "pedagogy_mode": "explanatory"  # Default mode
         }
         logger.info(f"Created new session {session_id[:8]}...")
 

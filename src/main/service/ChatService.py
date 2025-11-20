@@ -4,12 +4,15 @@ ChatService: Handles chat workflow for /chat endpoint.
 - Manages conversation history per session
 - Searches vector store for relevant context
 - Builds prompt with history and context
+- Applies pedagogy mode-specific prompts
 - Calls agent client
 - Returns answer and metadata
 """
 from typing import Optional, List
 import uuid
 import logging
+from src.main.dtos.PedagogyMode import PedagogyMode
+from src.main.service.PromptService import get_prompt_service
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +33,12 @@ class ChatService:
         self,
         vector_service,
         agent_client,
-        memory,  # NEW: ConversationMemory instance
+        memory,  # ConversationMemory instance
         *,
         max_context_chars: int = 8000,
-        max_history_messages: int = 10,  # NEW: Limit conversation history
+        max_history_messages: int = 10,
         system_preamble: Optional[str] = None,
+        prompt_service=None,  # PromptService for pedagogy modes
     ):
         self.vector_service = vector_service
         self.agent_client = agent_client
@@ -42,6 +46,7 @@ class ChatService:
         self.max_context_chars = max_context_chars
         self.max_history_messages = max_history_messages
         self.system_preamble = system_preamble or DEFAULT_SYSTEM
+        self.prompt_service = prompt_service or get_prompt_service()
         logger.info(f"ChatService initialized with max_context_chars={max_context_chars}, max_history_messages={max_history_messages}")
 
     def chat(
@@ -49,7 +54,8 @@ class ChatService:
         query: str, 
         top_k: int = 5, 
         session_id: Optional[str] = None,
-        include_history: bool = True
+        include_history: bool = True,
+        pedagogy_mode: Optional[str] = None
     ) -> dict:
         """
         Process a chat query with conversation history and context retrieval.
@@ -59,10 +65,11 @@ class ChatService:
             top_k: Number of context chunks to retrieve
             session_id: Optional session ID (auto-generated if None)
             include_history: Whether to include conversation history
+            pedagogy_mode: Teaching mode (socratic, explanatory, debugging, assessment, review)
         
         Returns:
             dict with keys: answer, session_id, is_new_session, history_length, 
-                           context_ids, tokens_input, tokens_output, model_id
+                           pedagogy_mode, context_ids, tokens_input, tokens_output, model_id
         """
         # Step 1: Handle session ID (hybrid approach)
         if session_id is None:
@@ -75,6 +82,23 @@ class ChatService:
                 logger.info(f"First message for session: {session_id[:8]}...")
             else:
                 logger.debug(f"Continuing session: {session_id[:8]}...")
+        
+        # Step 1.5: Determine and set pedagogy mode
+        if pedagogy_mode is None:
+            # Use session's existing mode or default
+            pedagogy_mode = self.memory.get_pedagogy_mode(session_id)
+            logger.debug(f"Using session pedagogy mode: {pedagogy_mode}")
+        else:
+            # Validate and set new mode for session
+            try:
+                mode_enum = self.prompt_service.validate_mode(pedagogy_mode)
+                pedagogy_mode = mode_enum.value
+                self.memory.set_pedagogy_mode(session_id, pedagogy_mode)
+                logger.info(f"Set pedagogy mode for session {session_id[:8]}... to '{pedagogy_mode}'")
+            except ValueError as e:
+                logger.warning(f"Invalid pedagogy mode '{pedagogy_mode}', using default: {e}")
+                pedagogy_mode = "explanatory"
+                self.memory.set_pedagogy_mode(session_id, pedagogy_mode)
         
         # Step 2: Retrieve conversation history
         history = []
@@ -97,11 +121,11 @@ class ChatService:
             context_str = context_str[:self.max_context_chars]
             logger.debug(f"Truncated context to {self.max_context_chars} chars")
         
-        # Step 4: Build messages with system prompt, history, context, and query
-        messages = self._build_messages(query, context_str, history)
+        # Step 4: Build messages with system prompt (including pedagogy mode), history, context, and query
+        messages = self._build_messages(query, context_str, history, pedagogy_mode)
         
         # Step 5: Call LLM
-        logger.info(f"[ChatService] query='{query[:50]}...', top_k={top_k}, context_len={len(context_str)}, history_len={len(history)}")
+        logger.info(f"[ChatService] query='{query[:50]}...', top_k={top_k}, mode={pedagogy_mode}, context_len={len(context_str)}, history_len={len(history)}")
         
         try:
             result = self.agent_client.chat(messages)
@@ -148,6 +172,7 @@ class ChatService:
             "session_id": session_id,
             "is_new_session": is_new_session,
             "history_length": len(history),
+            "pedagogy_mode": pedagogy_mode,
             "context_ids": context_ids,
             "tokens_input": tokens_input,
             "tokens_output": tokens_output,
@@ -158,21 +183,34 @@ class ChatService:
         self, 
         query: str, 
         context_str: str, 
-        history: List[dict]
+        history: List[dict],
+        pedagogy_mode: str
     ) -> List[dict]:
         """
         Build the messages array for the LLM with proper formatting.
         
         Format:
-        - System preamble
+        - Base system preamble
+        - Pedagogy mode-specific prompt
         - Conversation history (if any)
         - Document context
         - Current question
         """
         content_parts = []
         
-        # 1. System preamble
-        content_parts.append({"text": self.system_preamble})
+        # 1. System preamble with pedagogy mode instructions
+        try:
+            mode_enum = PedagogyMode.from_string(pedagogy_mode)
+            mode_prompt = self.prompt_service.get_mode_prompt(mode_enum)
+            
+            # Combine base system prompt with mode-specific instructions
+            combined_system = f"{self.system_preamble}\n\n---\n\n{mode_prompt}"
+            content_parts.append({"text": combined_system})
+            logger.debug(f"Applied {pedagogy_mode} mode prompt ({len(mode_prompt)} chars)")
+        except Exception as e:
+            # Fallback to default system prompt if mode loading fails
+            logger.error(f"Error loading pedagogy mode prompt: {e}, using default")
+            content_parts.append({"text": self.system_preamble})
         
         # 2. Add conversation history if present
         if history:
