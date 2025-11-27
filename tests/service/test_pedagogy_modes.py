@@ -14,7 +14,7 @@ class TestPedagogyModeEnum:
     
     def test_all_modes_defined(self):
         """Test that all expected modes are defined."""
-        expected_modes = {"socratic", "explanatory", "debugging", "assessment", "review"}
+        expected_modes = {"explanatory", "debugging", "practice"}
         actual_modes = {mode.value for mode in PedagogyMode}
         assert actual_modes == expected_modes
     
@@ -26,7 +26,7 @@ class TestPedagogyModeEnum:
     
     def test_from_string_valid(self):
         """Test converting valid strings to PedagogyMode."""
-        assert PedagogyMode.from_string("socratic") == PedagogyMode.SOCRATIC
+        assert PedagogyMode.from_string("practice") == PedagogyMode.PRACTICE
         assert PedagogyMode.from_string("EXPLANATORY") == PedagogyMode.EXPLANATORY  # Case-insensitive
         assert PedagogyMode.from_string("DebuGGing") == PedagogyMode.DEBUGGING
     
@@ -42,7 +42,7 @@ class TestPedagogyModeEnum:
     
     def test_get_prompt_filename(self):
         """Test that prompt filenames are correctly generated."""
-        assert PedagogyMode.SOCRATIC.get_prompt_filename() == "socratic_mode_prompt.md"
+        assert PedagogyMode.PRACTICE.get_prompt_filename() == "practice_mode_prompt.md"
         assert PedagogyMode.EXPLANATORY.get_prompt_filename() == "explanatory_mode_prompt.md"
         assert PedagogyMode.DEBUGGING.get_prompt_filename() == "debugging_mode_prompt.md"
     
@@ -77,7 +77,7 @@ class TestPromptService:
     
     def test_prompt_caching(self, prompt_service):
         """Test that prompts are cached after first load."""
-        mode = PedagogyMode.SOCRATIC
+        mode = PedagogyMode.PRACTICE
         
         # First load
         prompt1 = prompt_service.get_mode_prompt(mode)
@@ -90,8 +90,8 @@ class TestPromptService:
     
     def test_validate_mode_valid(self, prompt_service):
         """Test validating valid mode strings."""
-        result = prompt_service.validate_mode("socratic")
-        assert result == PedagogyMode.SOCRATIC
+        result = prompt_service.validate_mode("practice")
+        assert result == PedagogyMode.PRACTICE
     
     def test_validate_mode_invalid(self, prompt_service):
         """Test validating invalid mode strings."""
@@ -100,14 +100,14 @@ class TestPromptService:
     
     def test_get_mode_description(self, prompt_service):
         """Test getting mode descriptions."""
-        description = prompt_service.get_mode_description(PedagogyMode.SOCRATIC)
+        description = prompt_service.get_mode_description(PedagogyMode.PRACTICE)
         assert isinstance(description, str)
-        assert "question" in description.lower()  # Socratic mode is about questioning
+        assert "question" in description.lower()  # Practice mode uses questions
     
     def test_list_available_modes(self, prompt_service):
         """Test listing all available modes."""
         modes = prompt_service.list_available_modes()
-        assert len(modes) == 5
+        assert len(modes) == 3
         
         for mode_info in modes:
             assert "mode" in mode_info
@@ -118,7 +118,7 @@ class TestPromptService:
     def test_clear_cache(self, prompt_service):
         """Test clearing the prompt cache."""
         # Load a prompt to populate cache
-        prompt_service.get_mode_prompt(PedagogyMode.SOCRATIC)
+        prompt_service.get_mode_prompt(PedagogyMode.PRACTICE)
         assert len(prompt_service._prompt_cache) > 0
         
         # Clear cache
@@ -136,10 +136,10 @@ class TestPromptService:
     def test_get_combined_prompt(self, prompt_service):
         """Test combining base prompt with mode prompt."""
         base = "You are an AI tutor."
-        combined = prompt_service.get_combined_prompt(base, PedagogyMode.SOCRATIC)
+        combined = prompt_service.get_combined_prompt(base, PedagogyMode.PRACTICE)
         
         assert base in combined
-        assert "socratic" in combined.lower()
+        assert "practice" in combined.lower()
         assert "---" in combined  # Separator
 
 
@@ -160,9 +160,9 @@ class TestConversationMemoryPedagogyMode:
     def test_set_pedagogy_mode(self, memory):
         """Test setting pedagogy mode for a session."""
         session_id = "test-session"
-        memory.set_pedagogy_mode(session_id, "socratic")
+        memory.set_pedagogy_mode(session_id, "practice")
         
-        assert memory.get_pedagogy_mode(session_id) == "socratic"
+        assert memory.get_pedagogy_mode(session_id) == "practice"
     
     def test_set_pedagogy_mode_creates_session(self, memory):
         """Test that setting mode creates session if it doesn't exist."""
@@ -182,15 +182,15 @@ class TestConversationMemoryPedagogyMode:
         """Test that pedagogy mode is included in session info."""
         session_id = "test-session"
         memory.add_message(session_id, "user", "Hello")
-        memory.set_pedagogy_mode(session_id, "assessment")
+        memory.set_pedagogy_mode(session_id, "practice")
         
         info = memory.get_session_info(session_id)
-        assert info["pedagogy_mode"] == "assessment"
+        assert info["pedagogy_mode"] == "practice"
     
     def test_pedagogy_mode_persists_across_messages(self, memory):
         """Test that pedagogy mode persists as messages are added."""
         session_id = "test-session"
-        memory.set_pedagogy_mode(session_id, "review")
+        memory.set_pedagogy_mode(session_id, "practice")
         
         # Add multiple messages
         memory.add_message(session_id, "user", "Question 1")
@@ -198,17 +198,17 @@ class TestConversationMemoryPedagogyMode:
         memory.add_message(session_id, "user", "Question 2")
         
         # Mode should still be the same
-        assert memory.get_pedagogy_mode(session_id) == "review"
+        assert memory.get_pedagogy_mode(session_id) == "practice"
     
     def test_different_modes_different_sessions(self, memory):
         """Test that different sessions can have different modes."""
-        memory.set_pedagogy_mode("session-1", "socratic")
+        memory.set_pedagogy_mode("session-1", "practice")
         memory.set_pedagogy_mode("session-2", "debugging")
-        memory.set_pedagogy_mode("session-3", "assessment")
+        memory.set_pedagogy_mode("session-3", "explanatory")
         
-        assert memory.get_pedagogy_mode("session-1") == "socratic"
+        assert memory.get_pedagogy_mode("session-1") == "practice"
         assert memory.get_pedagogy_mode("session-2") == "debugging"
-        assert memory.get_pedagogy_mode("session-3") == "assessment"
+        assert memory.get_pedagogy_mode("session-3") == "explanatory"
 
 
 class TestPromptContentValidation:
@@ -218,9 +218,9 @@ class TestPromptContentValidation:
     def prompt_service(self):
         return PromptService()
     
-    def test_socratic_prompt_content(self, prompt_service):
-        """Test that Socratic prompt emphasizes questioning."""
-        prompt = prompt_service.get_mode_prompt(PedagogyMode.SOCRATIC)
+    def test_practice_prompt_content(self, prompt_service):
+        """Test that Practice prompt emphasizes questioning and testing."""
+        prompt = prompt_service.get_mode_prompt(PedagogyMode.PRACTICE)
         
         # Should mention questioning/questions
         assert "question" in prompt.lower()
@@ -242,20 +242,6 @@ class TestPromptContentValidation:
         
         assert "hint" in prompt.lower() or "debug" in prompt.lower()
         assert "solution" in prompt.lower()  # Should mention NOT giving solutions
-    
-    def test_assessment_prompt_content(self, prompt_service):
-        """Test that Assessment prompt emphasizes testing."""
-        prompt = prompt_service.get_mode_prompt(PedagogyMode.ASSESSMENT)
-        
-        assert "test" in prompt.lower() or "assess" in prompt.lower() or "evaluate" in prompt.lower()
-        assert "question" in prompt.lower()
-    
-    def test_review_prompt_content(self, prompt_service):
-        """Test that Review prompt emphasizes reinforcement."""
-        prompt = prompt_service.get_mode_prompt(PedagogyMode.REVIEW)
-        
-        assert "review" in prompt.lower() or "reinforce" in prompt.lower()
-        assert "remember" in prompt.lower() or "recall" in prompt.lower()
 
 
 class TestModeIntegration:
@@ -272,11 +258,11 @@ class TestModeIntegration:
     def test_full_mode_workflow(self, memory, prompt_service):
         """Test complete workflow of using a pedagogy mode."""
         session_id = "integration-test"
-        mode_str = "socratic"
+        mode_str = "practice"
         
         # 1. Validate mode
         mode = prompt_service.validate_mode(mode_str)
-        assert mode == PedagogyMode.SOCRATIC
+        assert mode == PedagogyMode.PRACTICE
         
         # 2. Set mode in session
         memory.set_pedagogy_mode(session_id, mode.value)
@@ -297,10 +283,10 @@ class TestModeIntegration:
         """Test switching between modes in a session."""
         session_id = "mode-switch-test"
         
-        # Start with socratic
-        memory.set_pedagogy_mode(session_id, "socratic")
+        # Start with practice
+        memory.set_pedagogy_mode(session_id, "practice")
         memory.add_message(session_id, "user", "Question 1")
-        assert memory.get_pedagogy_mode(session_id) == "socratic"
+        assert memory.get_pedagogy_mode(session_id) == "practice"
         
         # Switch to explanatory
         memory.set_pedagogy_mode(session_id, "explanatory")

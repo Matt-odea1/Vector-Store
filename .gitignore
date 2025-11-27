@@ -264,3 +264,13 @@ lerna-debug.log*
 # Testing
 coverage/
 
+# ================================
+# Terraform
+# ================================
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+*.tfvars.json
