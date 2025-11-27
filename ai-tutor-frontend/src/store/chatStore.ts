@@ -15,6 +15,7 @@ interface ChatStore {
   pedagogyMode: PedagogyMode
   isLoading: boolean
   error: string | null
+  layoutMode: 'stacked' | 'split'
   
   // Session Management State
   sessions: SessionInfo[]
@@ -30,6 +31,7 @@ interface ChatStore {
   setPedagogyMode: (mode: PedagogyMode) => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
+  setLayoutMode: (mode: 'stacked' | 'split') => void
   clearMessages: () => void
   clearSession: () => void
   
@@ -46,6 +48,9 @@ interface ChatStore {
   setEditorOutput: (output: string | null, error: string | null) => void
   setEditorExecuting: (isExecuting: boolean) => void
   clearEditor: () => void
+  insertCodeIntoEditor: (code: string) => void
+  addToHistory: (code: string, output: string | null, error: string | null) => void
+  loadFromHistory: (index: number) => void
 }
 
 export const useChatStore = create<ChatStore>((set) => ({
@@ -55,6 +60,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   pedagogyMode: (localStorage.getItem(STORAGE_KEYS.PEDAGOGY_MODE) as PedagogyMode) || DEFAULT_PEDAGOGY_MODE,
   isLoading: false,
   error: null,
+  layoutMode: 'split',
   
   // Session Management Initial State
   sessions: [],
@@ -68,6 +74,7 @@ export const useChatStore = create<ChatStore>((set) => ({
     lastOutput: null,
     lastError: null,
     isExecuting: false,
+    history: [],
   },
 
   // Actions
@@ -95,6 +102,8 @@ export const useChatStore = create<ChatStore>((set) => ({
   setLoading: (loading) => set({ isLoading: loading }),
 
   setError: (error) => set({ error }),
+
+  setLayoutMode: (mode) => set({ layoutMode: mode }),
 
   clearMessages: () => set({ messages: [] }),
 
@@ -153,4 +162,40 @@ export const useChatStore = create<ChatStore>((set) => ({
         lastError: null,
       },
     })),
+
+  insertCodeIntoEditor: (code) =>
+    set((state) => ({
+      codeEditor: { 
+        ...state.codeEditor, 
+        code,
+        isOpen: true,
+        isMinimized: false,
+      },
+    })),
+
+  addToHistory: (code, output, error) =>
+    set((state) => ({
+      codeEditor: {
+        ...state.codeEditor,
+        history: [
+          { code, output, error, timestamp: Date.now() },
+          ...state.codeEditor.history.slice(0, 4), // Keep last 5
+        ],
+      },
+    })),
+
+  loadFromHistory: (index) =>
+    set((state) => {
+      const entry = state.codeEditor.history[index]
+      if (!entry) return state
+      
+      return {
+        codeEditor: {
+          ...state.codeEditor,
+          code: entry.code,
+          lastOutput: entry.output,
+          lastError: entry.error,
+        },
+      }
+    }),
 }))

@@ -4,8 +4,8 @@
 import { useChatStore } from '../store/chatStore'
 import { useState, useEffect } from 'react'
 import { useSessions } from '../hooks/useSessions'
-import { formatRelativeTime } from '../utils/formatTime'
 import { getSessionTitleFromInfo } from '../utils/sessionUtils'
+import { formatRelativeTime } from '../utils/formatTime'
 import { DeleteConfirmModal } from './DeleteConfirmModal'
 import { SessionSkeletonList } from './SessionSkeleton'
 
@@ -91,24 +91,29 @@ export const Sidebar = () => {
 
   return (
     <aside className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col h-full">
-      {/* Branding & Collapse */}
+      {/* Header with Logo, New Chat, and Collapse */}
       <div className="p-4 border-b border-gray-800">
-        <div className="flex items-center justify-between mb-4">
-          {/* Logo & Title */}
-          <div className="flex items-center space-x-2">
-            <div className="bg-gradient-to-br from-primary-500 to-primary-600 w-8 h-8 rounded-lg flex items-center justify-center shadow-lg">
-              <span className="text-white text-sm font-bold">C9</span>
-            </div>
-            <div>
-              <h1 className="text-sm font-bold text-white">Chat9021</h1>
-              <p className="text-[10px] text-gray-400">Learn smarter, not harder</p>
-            </div>
+        <div className="flex items-center space-x-2">
+          {/* Logo */}
+          <div className="bg-gradient-to-br from-primary-500 to-primary-600 w-8 h-8 rounded-lg flex items-center justify-center shadow-lg flex-shrink-0">
+            <span className="text-white text-sm font-bold">C9</span>
           </div>
+          
+          {/* New Chat Button - fills available space */}
+          <button
+            onClick={handleNewChat}
+            className="flex-1 flex items-center justify-center space-x-1.5 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-md transition-colors duration-150 border border-gray-700 hover:border-gray-600"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            <span className="text-sm font-medium">New Chat</span>
+          </button>
           
           {/* Collapse Button */}
           <button
             onClick={() => setIsCollapsed(true)}
-            className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
             title="Collapse sidebar"
           >
             <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -116,23 +121,6 @@ export const Sidebar = () => {
             </svg>
           </button>
         </div>
-
-        {/* Online Status */}
-        <div className="flex items-center space-x-2 px-2 py-1.5 bg-green-900/30 rounded-lg mb-4">
-          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-          <span className="text-xs font-medium text-green-400">Online</span>
-        </div>
-
-        {/* New Chat Button */}
-        <button
-          onClick={handleNewChat}
-          className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 text-white rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span className="text-sm font-medium">New Chat</span>
-        </button>
       </div>
 
       {/* Sessions List */}
@@ -168,38 +156,39 @@ export const Sidebar = () => {
                 key={session.session_id}
                 onClick={() => handleLoadSession(session.session_id)}
                 disabled={isLoading}
-                className={`w-full text-left px-3 py-3 rounded-lg transition-all duration-200 group relative ${
+                className={`w-full text-left px-2.5 py-2 rounded-md transition-colors group relative ${
                   isActive
                     ? 'bg-gray-800 text-white'
                     : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                 } ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0 pr-2">
-                    <div className="flex items-center space-x-2">
-                      <p className="text-sm font-medium truncate">{title}</p>
+                <div className="flex items-center justify-between gap-1">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-medium truncate">{title}</p>
                       {isLoading && (
-                        <div className="animate-spin h-3 w-3 border-2 border-primary-500 border-t-transparent rounded-full" />
+                        <div className="animate-spin h-2.5 w-2.5 border border-primary-500 border-t-transparent rounded-full" />
                       )}
                     </div>
-                    <div className="flex items-center space-x-2 mt-0.5">
-                      <p className="text-xs text-gray-500">
-                        {formatRelativeTime(session.last_accessed)}
-                      </p>
-                      <span className="text-gray-600">•</span>
-                      <p className="text-xs text-gray-600">
-                        {session.message_count} message{session.message_count !== 1 ? 's' : ''}
-                      </p>
-                    </div>
+                    <p className="text-[10px] text-gray-500 mt-0.5">
+                      {formatRelativeTime(session.last_accessed)}
+                    </p>
                   </div>
-                  <button
-                    onClick={(e) => handleDeleteClick(session.session_id, title, e)}
-                    disabled={isLoading}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-gray-700 rounded transition-all flex-shrink-0"
+                  <div
+                    onClick={(e) => handleDeleteClick(session.session_id, title, e as any)}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-700 rounded transition-opacity flex-shrink-0 cursor-pointer"
                     title="Delete session"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleDeleteClick(session.session_id, title, e as any)
+                      }
+                    }}
                   >
                     <svg
-                      className="w-4 h-4"
+                      className="w-3.5 h-3.5"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -211,7 +200,7 @@ export const Sidebar = () => {
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                       />
                     </svg>
-                  </button>
+                  </div>
                 </div>
               </button>
             )
@@ -228,14 +217,25 @@ export const Sidebar = () => {
       />
 
       {/* Sidebar Footer */}
-      <div className="p-4 border-t border-gray-800">
-        <div className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 cursor-pointer transition-colors">
-          <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center">
+      <div className="px-6 py-2 pt-5 border-t border-gray-800">
+        <div className="flex items-center space-x-3 h-[40px]">
+          <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-white text-sm font-bold">U</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">User</p>
-            <p className="text-xs text-gray-500">Premium Plan</p>
+            <div className="flex items-center space-x-2">
+              <p className="text-sm font-medium text-white truncate">User</p>
+              <div className="flex items-center space-x-1">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-xs font-medium text-green-400">Online</span>
+              </div>
+            </div>
+            <a 
+              href="/data-usage" 
+              className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
+            >
+              How is my data used?
+            </a>
           </div>
         </div>
       </div>

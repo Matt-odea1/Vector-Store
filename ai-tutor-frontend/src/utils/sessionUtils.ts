@@ -18,11 +18,15 @@ export const getSessionTitle = (messages: Message[]): string => {
 
 /**
  * Get a title for a session from session info
- * Falls back to timestamp-based title if no messages available
+ * Falls back to timestamp-based title if no title is set
  */
 export const getSessionTitleFromInfo = (session: SessionInfo): string => {
-  // For now, use a generic title based on creation time
-  // In the future, we could fetch the first message from the API
+  // Use the AI-generated title if available
+  if (session.title) {
+    return session.title
+  }
+  
+  // Fallback to time-based title
   const date = new Date(session.created_at)
   const timeStr = date.toLocaleTimeString('en-US', { 
     hour: 'numeric', 

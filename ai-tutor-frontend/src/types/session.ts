@@ -9,6 +9,7 @@ export interface SessionInfo {
   last_accessed: string
   total_tokens: number
   pedagogy_mode?: string
+  title?: string
 }
 
 export interface SessionListResponse {

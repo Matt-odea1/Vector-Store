@@ -11,9 +11,10 @@ interface MessageListProps {
   messages: Message[]
   isLoading: boolean
   onSendMessage: (message: string) => void
+  hideSplitEditor?: boolean
 }
 
-export const MessageList = ({ messages, isLoading, onSendMessage }: MessageListProps) => {
+export const MessageList = ({ messages, isLoading, onSendMessage, hideSplitEditor = false }: MessageListProps) => {
   const bottomRef = useRef<HTMLDivElement>(null)
   const lastMessageRef = useRef<HTMLDivElement>(null)
   const prevIsLoadingRef = useRef(isLoading)
@@ -61,55 +62,46 @@ export const MessageList = ({ messages, isLoading, onSendMessage }: MessageListP
 
   if (messages.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
-        <div className="text-center max-w-3xl animate-fade-in">
-          {/* Large decorative icon */}
-          <div className="mb-8 flex justify-center">
-            <div className="bg-gradient-to-br from-primary-500 to-primary-600 w-24 h-24 rounded-3xl flex items-center justify-center shadow-2xl">
-              <span className="text-white text-5xl font-bold">C9</span>
+      <div className="flex items-center justify-center h-full p-6">
+        <div className="w-full max-w-4xl animate-fade-in space-y-6">
+          {/* Hero Section with Avatar */}
+          <div className="text-center mb-6">
+            <div className="mb-6 flex justify-center">
+              <div className="relative">
+                <div className="bg-gradient-to-br from-primary-500 to-primary-600 w-20 h-20 rounded-3xl flex items-center justify-center shadow-2xl">
+                  <span className="text-white text-4xl font-bold">C9</span>
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white"></div>
+              </div>
             </div>
-          </div>
-          
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">Welcome to Chat9021!</h2>
-          <p className="text-xl text-gray-600 mb-10 leading-relaxed">
-            Your personal learning companion. Choose a teaching mode and start your learning journey.
-          </p>
-
-          {/* Feature cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm hover:shadow-md transition-all">
-              <div className="text-2xl mb-2">🤔</div>
-              <div className="text-sm font-semibold text-gray-900">Socratic Mode</div>
-              <div className="text-xs text-gray-500 mt-1">Learn through questions</div>
-            </div>
-            <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm hover:shadow-md transition-all">
-              <div className="text-2xl mb-2">�</div>
-              <div className="text-sm font-semibold text-gray-900">Explanatory Mode</div>
-              <div className="text-xs text-gray-500 mt-1">Clear, direct teaching</div>
-            </div>
-            <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm hover:shadow-md transition-all">
-              <div className="text-2xl mb-2">🐛</div>
-              <div className="text-sm font-semibold text-gray-900">Debugging Mode</div>
-              <div className="text-xs text-gray-500 mt-1">Guided problem solving</div>
-            </div>
+            
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Hi! I'm your programming tutor.</h2>
+            <p className="text-lg text-gray-600">
+              What would you like to learn about today?
+            </p>
           </div>
 
-          {/* Example prompts */}
-          <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-2xl p-6 text-left border border-primary-200">
+          {/* Example Prompts */}
+          <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-2xl p-6 border border-primary-200">
             <p className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-              <span className="mr-2">💡</span>
-              Try asking me:
+              <span className="mr-2">💬</span>
+              Try one of these:
             </p>
             <div className="space-y-2">
               {[
-                "Explain how recursion works in Python",
-                "Help me debug this code snippet",
-                "Test my understanding of data structures",
-                "Review what I learned about sorting algorithms",
+                "Help me learn week 4 content",
+                "How do I print text in Python?",
+                "What's the difference between = and ==?",
+                "How do I get user input in my program?",
+                "Help me understand if statements",
               ].map((prompt, i) => (
-                <div key={i} className="bg-white rounded-lg px-4 py-3 text-sm text-gray-700 shadow-sm hover:shadow-md transition-all cursor-pointer">
+                <button
+                  key={i}
+                  onClick={() => onSendMessage(prompt)}
+                  className="w-full bg-white rounded-lg px-4 py-3 text-sm text-gray-700 shadow-sm hover:shadow-md transition-all text-left hover:bg-gray-50"
+                >
                   "{prompt}"
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -133,21 +125,24 @@ export const MessageList = ({ messages, isLoading, onSendMessage }: MessageListP
           )
         })}
 
-        {/* Code Editor - appears inline with messages */}
-        <CodeEditor onSendMessage={onSendMessage} />
+        {/* Code Editor - appears inline with messages (hidden in split view) */}
+        {!hideSplitEditor && <CodeEditor onSendMessage={onSendMessage} />}
 
         {/* Typing indicator */}
         {isLoading && (
           <div className="flex justify-start mb-6 animate-fade-in">
             <div className="flex space-x-3">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-md">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-md animate-pulse">
                 <span className="text-white text-sm font-semibold">AI</span>
               </div>
               <div className="bg-white rounded-2xl px-5 py-4 shadow-message border border-gray-200">
-                <div className="flex space-x-2">
-                  <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 bg-primary-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="flex items-center space-x-3">
+                  {/* Rotating spinner similar to ChatGPT/Gemini */}
+                  <div className="relative w-5 h-5">
+                    <div className="absolute inset-0 border-2 border-gray-200 rounded-full"></div>
+                    <div className="absolute inset-0 border-2 border-primary-500 rounded-full border-t-transparent animate-spin"></div>
+                  </div>
+                  <span className="text-sm text-gray-600">Thinking...</span>
                 </div>
               </div>
             </div>

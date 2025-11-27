@@ -13,6 +13,13 @@ export interface CodeSnippet {
   timestamp: Date;
 }
 
+export interface CodeExecutionHistoryEntry {
+  code: string;
+  output: string | null;
+  error: string | null;
+  timestamp: number;
+}
+
 export interface CodeEditorState {
   code: string;
   isOpen: boolean;
@@ -20,4 +27,5 @@ export interface CodeEditorState {
   lastOutput: string | null;
   lastError: string | null;
   isExecuting: boolean;
+  history: CodeExecutionHistoryEntry[];
 }

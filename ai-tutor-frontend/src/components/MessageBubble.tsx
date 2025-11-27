@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Message } from '../types/chat'
 import { formatTimestamp } from '../utils/formatDate'
+import { CodeBlock } from './CodeBlock'
 
 interface MessageBubbleProps {
   message: Message
@@ -74,18 +75,26 @@ export const MessageBubble = ({ message }: MessageBubbleProps) => {
                     }
                     return <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>
                   },
-                  code: ({ inline, children, ...props }: any) =>
-                    inline ? (
-                      <code className="bg-pink-50 text-pink-600 px-2 py-0.5 rounded text-sm font-medium" {...props}>
-                        {children}
-                      </code>
-                    ) : (
-                      <pre className="bg-gray-900 text-gray-100 rounded-xl p-4 overflow-x-auto my-3 shadow-inner">
-                        <code className="text-sm" {...props}>
+                  code: ({ inline, children, className, ...props }: any) => {
+                    if (inline) {
+                      return (
+                        <code className="bg-pink-50 text-pink-600 px-2 py-0.5 rounded text-sm font-medium" {...props}>
                           {children}
                         </code>
-                      </pre>
-                    ),
+                      )
+                    }
+                    // Block code - pass to CodeBlock component
+                    return (
+                      <CodeBlock className={className} {...props}>
+                        {children}
+                      </CodeBlock>
+                    )
+                  },
+                  pre: ({ children }: any) => {
+                    // Just return children directly to prevent double wrapping
+                    // The CodeBlock component already has its own <pre> tag
+                    return <>{children}</>
+                  },
                   ul: ({ children }) => <ul className="ml-4 mb-3 space-y-1 list-disc">{children}</ul>,
                   ol: ({ children }) => <ol className="ml-4 mb-3 space-y-1 list-decimal">{children}</ol>,
                   li: ({ children }) => <li className="leading-relaxed">{children}</li>,
