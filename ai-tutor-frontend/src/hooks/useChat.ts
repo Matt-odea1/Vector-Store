@@ -59,15 +59,29 @@ export const useChat = () => {
         addMessage(assistantMessage)
       } catch (err) {
         console.error('Failed to send message:', err)
-        const errorMessage =
-          err instanceof Error ? err.message : 'Failed to send message. Please try again.'
         
-        setError(errorMessage)
+        // Check if it's a model/server error
+        let userFriendlyMessage = "I'm sorry, I can't handle that right now. Please try again in a moment."
         
-        // Add error message to chat
+        if (err instanceof Error) {
+          // Check for specific error types
+          if (err.message.includes('Network Error') || err.message.includes('fetch')) {
+            userFriendlyMessage = "I'm having trouble connecting right now. Please check your connection and try again."
+          } else if (err.message.includes('timeout')) {
+            userFriendlyMessage = "The request took too long. Please try again with a shorter message."
+          } else if (err.message.includes('500') || err.message.includes('503')) {
+            userFriendlyMessage = "I'm experiencing technical difficulties right now. Please try again in a moment."
+          } else if (err.message.includes('ValidationException') || err.message.includes('model')) {
+            userFriendlyMessage = "I'm having trouble processing your request right now. Our team has been notified."
+          }
+        }
+        
+        setError(userFriendlyMessage)
+        
+        // Add friendly error message to chat
         const errorMsg: Message = {
           role: 'assistant',
-          content: `❌ Error: ${errorMessage}`,
+          content: userFriendlyMessage,
           timestamp: new Date().toISOString(),
           isError: true,
         }

@@ -19,7 +19,10 @@ from src.main.service.FileToTextService import FileToTextService
 # Add Deepgram Speech-to-Text import and tempfile/os
 import tempfile
 import os
+import logging
 from src.main.service.SpeechToTextService import DeepgramTranscribeService
+
+logger = logging.getLogger(__name__)
 
 # Question Generation Service imports
 from src.main.service.QuestionGenerationService import QuestionGenerationService, QuestionGenerationError
@@ -35,6 +38,7 @@ from src.main.dtos.EvaluateResponsesResponse import (
 
 # Conversation Memory
 from src.main.agentcore_setup.memory import ConversationMemory
+from src.main.agentcore_setup.dynamodb_memory import DynamoDBConversationMemory
 
 
 # --- Dependency injection ------------------------------------------------------
@@ -50,10 +54,25 @@ def get_context_service() -> ContextVectorService:
 
 # --- ConversationMemory DI ----------------------------------------------------
 @lru_cache(maxsize=1)
-def _memory_singleton() -> ConversationMemory:
-    return ConversationMemory(max_sessions=1000)
+def _memory_singleton():
+    """
+    Factory for conversation memory.
+    Uses DynamoDB if USE_DYNAMODB=true, otherwise falls back to in-memory.
+    """
+    use_dynamodb = os.getenv('USE_DYNAMODB', 'false').lower() == 'true'
+    
+    if use_dynamodb:
+        logger.info("Using DynamoDB for conversation persistence")
+        return DynamoDBConversationMemory(
+            table_name=os.getenv('DYNAMODB_TABLE_NAME', 'chat_sessions'),
+            region=os.getenv('DYNAMODB_REGION', 'us-east-1'),
+            ttl_days=30
+        )
+    else:
+        logger.info("Using in-memory conversation storage")
+        return ConversationMemory(max_sessions=1000)
 
-def get_memory_service() -> ConversationMemory:
+def get_memory_service():
     return _memory_singleton()
 
 

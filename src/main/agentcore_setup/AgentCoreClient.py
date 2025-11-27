@@ -22,7 +22,8 @@ class AgentCoreClient:
     def chat(self, messages, model_id, **kwargs):
         self.logger.debug(f"chat called with model_id={model_id}")
         self.logger.debug(f"messages={messages}")
-        # Amazon Titan (nova-lite-v1:0) expects 'messages' API format
+        
+        # Amazon Nova models use specific format
         if model_id == "amazon.nova-lite-v1:0":
             # Validate messages structure
             if not messages or not isinstance(messages, list):
@@ -59,12 +60,15 @@ class AgentCoreClient:
                 # NOTE: Unexpected Nova chat response structure
                 self.logger.error(f"Unexpected Nova chat response: {body}")
                 raise ValueError(f"Unexpected Nova chat response: {body}")
-        # Validate messages for non-Titan models
+        
+        # GPT-OSS-120B and other standard Bedrock models
+        # Validate messages for standard Bedrock models
         if not messages or not isinstance(messages, list):
             self.logger.error("Bedrock chat: 'messages' must be a non-empty list.")
             raise ValueError("Bedrock chat: 'messages' must be a non-empty list.")
+        
         payload = json.dumps({"messages": messages})
-        self.logger.debug(f"Non-Titan payload={payload}")
+        self.logger.debug(f"Bedrock payload for {model_id}={payload}")
         try:
             response = self.bedrock_client.invoke_model(
                 modelId=model_id,
@@ -73,11 +77,28 @@ class AgentCoreClient:
                 accept="application/json"
             )
             body = json.loads(response["body"].read())
-            self.logger.debug(f"Non-Titan response={body}")
+            self.logger.debug(f"Bedrock response for {model_id}={body}")
         except Exception as e:
-            self.logger.error(f"Non-Titan Bedrock error: {e}")
+            self.logger.error(f"Bedrock error for {model_id}: {e}")
             raise
-        if "content" in body and isinstance(body["content"], list):
+        
+        # Handle standard Bedrock response formats
+        # OpenAI-compatible format (GPT-OSS-120B)
+        if "choices" in body and isinstance(body["choices"], list) and body["choices"]:
+            choice = body["choices"][0]
+            if "message" in choice and "content" in choice["message"]:
+                content = choice["message"]["content"]
+                # Extract token usage if available
+                tokens_input = body.get("usage", {}).get("prompt_tokens")
+                tokens_output = body.get("usage", {}).get("completion_tokens")
+                return {
+                    "text": content,
+                    "tokens_input": tokens_input,
+                    "tokens_output": tokens_output,
+                    "model_id": body.get("model")
+                }
+        # Bedrock standard formats
+        elif "content" in body and isinstance(body["content"], list):
             return {"text": body["content"][0]["text"]}
         elif "completions" in body and isinstance(body["completions"], list):
             return {"text": body["completions"][0]["data"]["text"]}

@@ -1,7 +1,7 @@
 /**
  * Chat input component - Premium design with mode selector
  */
-import { useState, type KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
 import { useChatStore } from '../store/chatStore'
 import { PEDAGOGY_MODES } from '../types/pedagogy'
 import type { PedagogyMode } from '../types/pedagogy'
@@ -18,7 +18,33 @@ export const ChatInput = ({
   placeholder = 'Ask me anything...',
 }: ChatInputProps) => {
   const [input, setInput] = useState('')
+  const [isModeDropdownOpen, setIsModeDropdownOpen] = useState(false)
   const { pedagogyMode, setPedagogyMode, codeEditor, setEditorOpen } = useChatStore()
+  const modeDropdownRef = useRef<HTMLDivElement>(null)
+
+  const selectedMode = PEDAGOGY_MODES.find(mode => mode.id === pedagogyMode)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(event.target as Node)) {
+        setIsModeDropdownOpen(false)
+      }
+    }
+
+    if (isModeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isModeDropdownOpen])
+
+  const handleSelectMode = (mode: PedagogyMode) => {
+    setPedagogyMode(mode)
+    setIsModeDropdownOpen(false)
+  }
 
   const handleSend = () => {
     if (!input.trim() || disabled) return
@@ -55,25 +81,63 @@ export const ChatInput = ({
             <span className="hidden sm:inline">{codeEditor.isOpen ? 'Editor Open' : 'Code'}</span>
           </button>
           
-          {/* Mode Selector */}
-          <div className="relative flex-shrink-0">
-            <select
-              id="pedagogy-mode"
-              value={pedagogyMode}
-              onChange={(e) => setPedagogyMode(e.target.value as PedagogyMode)}
-              className="appearance-none rounded-xl border-2 border-gray-200 bg-white px-4 pr-10 text-sm font-medium text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 cursor-pointer hover:border-gray-300 transition-all shadow-sm h-[56px]"
+          {/* Mode Selector - Custom Dropdown */}
+          <div className="relative flex-shrink-0" ref={modeDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsModeDropdownOpen(!isModeDropdownOpen)}
+              className="flex items-center space-x-2 rounded-xl border-2 border-gray-200 bg-white px-4 pr-10 text-sm font-medium text-gray-900 hover:border-gray-300 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all shadow-sm h-[56px] cursor-pointer"
             >
-              {PEDAGOGY_MODES.map((mode) => (
-                <option key={mode.id} value={mode.id}>
-                  {mode.icon} {mode.name}
-                </option>
-              ))}
-            </select>
+              <span className="text-lg">{selectedMode?.icon}</span>
+              <span className="hidden sm:inline">{selectedMode?.name}</span>
+            </button>
+            
+            {/* Dropdown Icon */}
             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg 
+                className={`w-4 h-4 text-gray-400 transition-transform ${isModeDropdownOpen ? 'rotate-180' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </div>
+
+            {/* Dropdown Menu */}
+            {isModeDropdownOpen && (
+              <div className="absolute bottom-full left-0 mb-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 py-2 z-50 animate-fade-in">
+                {PEDAGOGY_MODES.map((mode) => (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => handleSelectMode(mode.id)}
+                    className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
+                      mode.id === pedagogyMode ? 'bg-primary-50' : ''
+                    }`}
+                  >
+                    <div className="flex items-start space-x-3">
+                      <span className="text-2xl">{mode.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-semibold text-gray-900 text-sm">
+                            {mode.name}
+                          </span>
+                          {mode.id === pedagogyMode && (
+                            <svg className="w-4 h-4 text-primary-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                          {mode.description}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           
           <div className="flex-1 relative">

@@ -5,6 +5,7 @@ import { create } from 'zustand'
 import type { Message } from '../types/chat'
 import type { PedagogyMode } from '../types/pedagogy'
 import type { CodeEditorState } from '../types/code'
+import type { SessionInfo } from '../types/session'
 import { DEFAULT_PEDAGOGY_MODE, STORAGE_KEYS } from '../config/constants'
 
 interface ChatStore {
@@ -14,6 +15,10 @@ interface ChatStore {
   pedagogyMode: PedagogyMode
   isLoading: boolean
   error: string | null
+  
+  // Session Management State
+  sessions: SessionInfo[]
+  isLoadingSessions: boolean
   
   // Code Editor State
   codeEditor: CodeEditorState
@@ -27,6 +32,12 @@ interface ChatStore {
   setError: (error: string | null) => void
   clearMessages: () => void
   clearSession: () => void
+  
+  // Session Management Actions
+  setSessions: (sessions: SessionInfo[]) => void
+  loadSession: (sessionId: string, messages: Message[]) => void
+  deleteSessionFromStore: (sessionId: string) => void
+  setLoadingSessions: (loading: boolean) => void
   
   // Code Editor Actions
   setEditorCode: (code: string) => void
@@ -44,6 +55,10 @@ export const useChatStore = create<ChatStore>((set) => ({
   pedagogyMode: (localStorage.getItem(STORAGE_KEYS.PEDAGOGY_MODE) as PedagogyMode) || DEFAULT_PEDAGOGY_MODE,
   isLoading: false,
   error: null,
+  
+  // Session Management Initial State
+  sessions: [],
+  isLoadingSessions: false,
   
   // Code Editor Initial State
   codeEditor: {
@@ -87,6 +102,21 @@ export const useChatStore = create<ChatStore>((set) => ({
     localStorage.removeItem(STORAGE_KEYS.SESSION_ID)
     set({ messages: [], sessionId: null, error: null })
   },
+  
+  // Session Management Actions
+  setSessions: (sessions) => set({ sessions }),
+  
+  loadSession: (sessionId, messages) => {
+    localStorage.setItem(STORAGE_KEYS.SESSION_ID, sessionId)
+    set({ sessionId, messages, error: null })
+  },
+  
+  deleteSessionFromStore: (sessionId) =>
+    set((state) => ({
+      sessions: state.sessions.filter((s) => s.session_id !== sessionId),
+    })),
+  
+  setLoadingSessions: (loading) => set({ isLoadingSessions: loading }),
   
   // Code Editor Actions
   setEditorCode: (code) =>

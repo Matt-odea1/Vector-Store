@@ -14,8 +14,12 @@ MODEL_REGISTRY = {
 }
 
 MODEL_CAPS = {
+    # Chat Models
     'amazon.nova-lite-v1:0': {'mode': 'chat', 'tool_use': True, 'json_mode': True},
+    'openai.gpt-oss-120b-1:0': {'mode': 'chat', 'tool_use': True, 'json_mode': True},
+    # Embedding Models
     'amazon.titan-embed-text-v2:0': {'mode': 'embed', 'dim': EMBEDDING_DIM},
+    'cohere.embed-english-v3': {'mode': 'embed', 'dim': EMBEDDING_DIM},
     # Add more models as needed
 }
 

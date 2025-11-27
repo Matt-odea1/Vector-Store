@@ -34,7 +34,7 @@ export const MessageBubble = ({ message }: MessageBubbleProps) => {
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6 message-enter`}>
-      <div className="flex max-w-4xl w-full space-x-3">
+      <div className={`flex space-x-3 ${isUser ? 'max-w-2xl ml-auto' : 'max-w-4xl w-full'}`}>
         {/* Avatar for assistant */}
         {!isUser && (
           <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-md">
@@ -44,16 +44,23 @@ export const MessageBubble = ({ message }: MessageBubbleProps) => {
 
         {/* Message Content */}
         <div
-          className={`flex-1 rounded-2xl px-5 py-4 shadow-message transition-all duration-200 hover:shadow-message-hover ${
+          className={`rounded-2xl px-5 py-4 shadow-message transition-all duration-200 hover:shadow-message-hover ${
             isUser
-              ? 'bg-gradient-to-br from-primary-600 to-primary-500 text-white ml-auto'
+              ? 'bg-gradient-to-br from-primary-600 to-primary-500 text-white'
               : isError
-              ? 'bg-red-50 text-red-900 border-2 border-red-200'
-              : 'bg-white text-gray-900 border border-gray-200'
+              ? 'bg-amber-50 text-amber-900 border-2 border-amber-200 flex-1'
+              : 'bg-white text-gray-900 border border-gray-200 flex-1'
           }`}
         >
           {isUser ? (
             <p className="text-white leading-relaxed m-0 whitespace-pre-wrap">{message.content}</p>
+          ) : isError ? (
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 text-2xl">⚠️</div>
+              <div className="flex-1">
+                <p className="text-amber-900 leading-relaxed m-0">{message.content}</p>
+              </div>
+            </div>
           ) : (
             <div className="markdown-content prose prose-sm max-w-none">
               <ReactMarkdown
@@ -100,7 +107,7 @@ export const MessageBubble = ({ message }: MessageBubbleProps) => {
               isUser 
                 ? 'text-primary-100 border-primary-400/30' 
                 : isError 
-                ? 'text-red-600 border-red-200' 
+                ? 'text-amber-600 border-amber-200' 
                 : 'text-gray-500 border-gray-200'
             }`}
           >

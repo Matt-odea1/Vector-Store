@@ -149,6 +149,9 @@ class ChatService:
             tokens_output = None
             model_id = None
         
+        # Step 6.5: Clean reasoning tags from model output
+        answer = self._strip_reasoning_tags(answer)
+        
         # Step 7: Store this conversation exchange in memory
         self.memory.add_message(
             session_id=session_id,
@@ -205,27 +208,32 @@ class ChatService:
             
             # Combine base system prompt with mode-specific instructions
             combined_system = f"{self.system_preamble}\n\n---\n\n{mode_prompt}"
-            content_parts.append({"text": combined_system})
+            content_parts.append(combined_system)
             logger.debug(f"Applied {pedagogy_mode} mode prompt ({len(mode_prompt)} chars)")
         except Exception as e:
             # Fallback to default system prompt if mode loading fails
             logger.error(f"Error loading pedagogy mode prompt: {e}, using default")
-            content_parts.append({"text": self.system_preamble})
+            content_parts.append(self.system_preamble)
         
         # 2. Add conversation history if present
         if history:
             history_text = self._format_history(history)
-            content_parts.append({"text": history_text})
+            content_parts.append(history_text)
         
         # 3. Add retrieved document context
         if context_str:
-            content_parts.append({"text": f"Relevant course materials:\n{context_str}"})
+            content_parts.append(f"Relevant course materials:\n{context_str}")
         
         # 4. Add current question
-        content_parts.append({"text": f"Current question:\n{query}"})
+        content_parts.append(f"Current question:\n{query}")
+        
+        # Flatten content parts into a single string for GPT-OSS and standard models
+        # Models expect: {"role": "user", "content": "string"}
+        # NOT: {"role": "user", "content": [{"text": "..."}, ...]}
+        content_string = "\n\n".join(content_parts)
         
         return [
-            {"role": "user", "content": content_parts}
+            {"role": "user", "content": content_string}
         ]
     
     def _format_history(self, history: List[dict]) -> str:
@@ -246,3 +254,18 @@ class ChatService:
         
         lines.append("")  # Blank line separator
         return "\n".join(lines)
+    
+    def _strip_reasoning_tags(self, text: str) -> str:
+        """
+        Remove <reasoning>...</reasoning> tags and their content from model output.
+        The model may use these tags for internal chain-of-thought reasoning,
+        but we don't want to show this to end users.
+        """
+        import re
+        # Remove reasoning tags and their content (case-insensitive)
+        cleaned = re.sub(r'<reasoning>.*?</reasoning>', '', text, flags=re.IGNORECASE | re.DOTALL)
+        # Remove any leftover standalone tags
+        cleaned = re.sub(r'</?reasoning>', '', cleaned, flags=re.IGNORECASE)
+        # Clean up excessive whitespace
+        cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+        return cleaned.strip()
