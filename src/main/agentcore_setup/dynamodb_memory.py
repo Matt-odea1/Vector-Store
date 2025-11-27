@@ -253,7 +253,8 @@ class DynamoDBConversationMemory:
             'created_at': metadata.get('created_at'),
             'last_accessed': metadata.get('last_accessed'),
             'total_tokens': int(metadata.get('total_tokens', 0)),
-            'pedagogy_mode': metadata.get('pedagogy_mode', 'explanatory')
+            'pedagogy_mode': metadata.get('pedagogy_mode', 'explanatory'),
+            'title': metadata.get('title', 'New Chat')
         }
     
     def get_session_stats(self, session_id: str) -> Dict[str, Any]:
@@ -296,7 +297,8 @@ class DynamoDBConversationMemory:
                     'created_at': item.get('created_at'),
                     'last_accessed': item.get('last_accessed'),
                     'total_tokens': int(item.get('total_tokens', 0)),
-                    'pedagogy_mode': item.get('pedagogy_mode', 'explanatory')
+                    'pedagogy_mode': item.get('pedagogy_mode', 'explanatory'),
+                    'title': item.get('title', 'New Chat')
                 })
             
             # Sort by last_accessed (most recent first)
@@ -476,7 +478,7 @@ class DynamoDBConversationMemory:
             logger.error(f"Failed to get metadata from DynamoDB: {e}")
             return None
     
-    def _create_session(self, session_id: str) -> None:
+    def _create_session(self, session_id: str, title: Optional[str] = None) -> None:
         """Create a new session metadata item."""
         now = datetime.now(timezone.utc).isoformat()
         ttl = int((datetime.now(timezone.utc) + timedelta(days=self.ttl_days)).timestamp())
@@ -491,6 +493,7 @@ class DynamoDBConversationMemory:
                     'total_tokens': 0,
                     'message_count': 0,
                     'pedagogy_mode': 'explanatory',
+                    'title': title or 'New Chat',
                     'ttl': ttl  # Auto-delete after ttl_days
                 }
             )
@@ -514,6 +517,23 @@ class DynamoDBConversationMemory:
             )
         except ClientError as e:
             logger.debug(f"Failed to update last_accessed (non-critical): {e}")
+    
+    def update_session_title(self, session_id: str, title: str) -> None:
+        """Update the title for a session."""
+        try:
+            self.table.update_item(
+                Key={
+                    'PK': f'SESSION#{session_id}',
+                    'SK': 'METADATA'
+                },
+                UpdateExpression='SET title = :t',
+                ExpressionAttributeValues={
+                    ':t': title
+                }
+            )
+            logger.info(f"Updated title for session {session_id[:8]}... to '{title}'")
+        except ClientError as e:
+            logger.error(f"Failed to update session title: {e}")
     
     # Legacy compatibility methods
     

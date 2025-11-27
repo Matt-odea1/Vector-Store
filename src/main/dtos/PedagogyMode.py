@@ -14,17 +14,6 @@ class PedagogyMode(str, Enum):
     associated prompt file in the prompts/ directory.
     """
     
-    SOCRATIC = "socratic"
-    """
-    Socratic Mode - Discovery Through Questioning
-    
-    Uses the Socratic method to guide students toward discovering answers
-    themselves through thoughtful questioning. Focuses on developing
-    critical thinking and problem-solving skills.
-    
-    Best for: Concept exploration, problem-solving, critical thinking
-    """
-    
     EXPLANATORY = "explanatory"
     """
     Explanatory Mode - Direct Instruction (Default)
@@ -45,24 +34,15 @@ class PedagogyMode(str, Enum):
     Best for: Homework help, debugging assistance, avoiding giving solutions
     """
     
-    ASSESSMENT = "assessment"
+    PRACTICE = "practice"
     """
-    Assessment Mode - Testing Understanding
+    Practice Mode - Guided Questions & Active Learning
     
-    Tests and evaluates student understanding through questions and problems.
-    Provides feedback on answers without teaching directly.
+    Combines Socratic questioning with active testing. Uses guided questions
+    to help discover concepts and poses challenges to test understanding.
+    Provides constructive feedback and identifies knowledge gaps.
     
-    Best for: Self-assessment, practice problems, exam preparation
-    """
-    
-    REVIEW = "review"
-    """
-    Review Mode - Reinforcement and Consolidation
-    
-    Helps students reinforce and consolidate previously learned material.
-    Summarizes concepts, makes connections, and fills knowledge gaps.
-    
-    Best for: Exam prep, refreshing concepts, building retention
+    Best for: Active practice, self-assessment, exam prep, discovering insights
     """
     
     @classmethod
@@ -118,10 +98,8 @@ class PedagogyMode(str, Enum):
             Description string
         """
         descriptions = {
-            self.SOCRATIC: "Discovery through questioning - guides students to find answers",
             self.EXPLANATORY: "Direct instruction with clear explanations and examples",
             self.DEBUGGING: "Hint-based problem solving without giving away solutions",
-            self.ASSESSMENT: "Tests understanding through questions and feedback",
-            self.REVIEW: "Reinforces and consolidates previously learned material"
+            self.PRACTICE: "Guided questions and active testing for deeper understanding"
         }
         return descriptions.get(self, "Unknown mode")

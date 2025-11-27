@@ -297,7 +297,8 @@ def list_sessions_endpoint(memory: ConversationMemory = Depends(get_memory_servi
             message_count=s["message_count"],
             created_at=s["created_at"],
             last_accessed=s["last_accessed"],
-            total_tokens=s["total_tokens"]
+            total_tokens=s["total_tokens"],
+            title=s.get("title", "New Chat")
         )
         for s in sessions
     ]

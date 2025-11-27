@@ -12,6 +12,7 @@ class SessionInfo(BaseModel):
     created_at: str
     last_accessed: str
     total_tokens: int
+    title: str = "New Chat"
 
 
 class SessionListResponse(BaseModel):

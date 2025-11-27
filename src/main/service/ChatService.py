@@ -65,7 +65,7 @@ class ChatService:
             top_k: Number of context chunks to retrieve
             session_id: Optional session ID (auto-generated if None)
             include_history: Whether to include conversation history
-            pedagogy_mode: Teaching mode (socratic, explanatory, debugging, assessment, review)
+            pedagogy_mode: Teaching mode (explanatory, debugging, practice)
         
         Returns:
             dict with keys: answer, session_id, is_new_session, history_length, 
@@ -87,6 +87,8 @@ class ChatService:
         if pedagogy_mode is None:
             # Use session's existing mode or default
             pedagogy_mode = self.memory.get_pedagogy_mode(session_id)
+            # Migrate old mode values to new 3-mode system
+            pedagogy_mode = self._migrate_old_mode(pedagogy_mode)
             logger.debug(f"Using session pedagogy mode: {pedagogy_mode}")
         else:
             # Validate and set new mode for session
@@ -168,6 +170,15 @@ class ChatService:
         )
         
         logger.info(f"Stored conversation exchange in session {session_id[:8]}...")
+        
+        # Step 7.5: Generate session title if this is the first message
+        if is_new_session:
+            try:
+                title = self._generate_session_title(query)
+                self.memory.update_session_title(session_id, title)
+                logger.info(f"Generated title for session {session_id[:8]}...: '{title}'")
+            except Exception as e:
+                logger.warning(f"Failed to generate session title: {e}")
         
         # Step 8: Return enhanced response
         return {
@@ -254,6 +265,85 @@ class ChatService:
         
         lines.append("")  # Blank line separator
         return "\n".join(lines)
+    
+    def _generate_session_title(self, first_message: str) -> str:
+        """
+        Generate a short 2-3 word title for a session based on the first user message.
+        
+        Args:
+            first_message: The user's first message in the session
+            
+        Returns:
+            A concise title (2-3 words)
+        """
+        prompt = f"""Generate a very short, concise title (2-3 words maximum) for a chat session based on this first message.
+
+First message: "{first_message}"
+
+Examples:
+- "How do I print text in Python?" → "Print Function"
+- "Explain recursion to me" → "Recursion Basics"
+- "Help me debug this code" → "Debug Help"
+- "What are lists?" → "Python Lists"
+
+Provide only the title, nothing else. Keep it short and descriptive."""
+        
+        messages = [
+            {"role": "user", "content": prompt}
+        ]
+        
+        try:
+            result = self.agent_client.chat(messages)
+            
+            # Extract title from result
+            if isinstance(result, str):
+                title = result.strip()
+            elif isinstance(result, dict):
+                title = result.get("content", "New Chat").strip()
+            else:
+                title = "New Chat"
+            
+            # Strip reasoning tags if present
+            title = self._strip_reasoning_tags(title)
+            
+            # Clean up the title (remove quotes, limit length)
+            title = title.strip('"\'\'').strip()
+            
+            # Ensure it's not too long (max 30 chars)
+            if len(title) > 30:
+                title = title[:27] + "..."
+            
+            return title if title else "New Chat"
+            
+        except Exception as e:
+            logger.error(f"Error generating session title: {e}")
+            return "New Chat"
+    
+    def _migrate_old_mode(self, mode: str) -> str:
+        """
+        Migrate old 5-mode system values to new 3-mode system.
+        
+        Args:
+            mode: Old or new mode value
+            
+        Returns:
+            Valid mode value from new 3-mode system
+        """
+        # Map old modes to new modes
+        mode_migration = {
+            'socratic': 'practice',      # Socratic -> Practice
+            'assessment': 'practice',     # Assessment -> Practice
+            'review': 'explanatory',      # Review -> Explanatory
+            # New modes pass through
+            'explanatory': 'explanatory',
+            'debugging': 'debugging',
+            'practice': 'practice'
+        }
+        
+        migrated = mode_migration.get(mode, 'explanatory')
+        if migrated != mode:
+            logger.info(f"Migrated old mode '{mode}' to '{migrated}'")
+        return migrated
     
     def _strip_reasoning_tags(self, text: str) -> str:
         """
