@@ -31,6 +31,22 @@ export const Sidebar = () => {
     fetchSessions()
   }, [fetchSessions])
 
+  // Auto-collapse sidebar on mobile devices
+  useEffect(() => {
+    const checkMobile = () => {
+      if (window.innerWidth < 768) {
+        setIsCollapsed(true)
+      }
+    }
+    
+    // Check on mount
+    checkMobile()
+    
+    // Check on resize
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
   const handleNewChat = () => {
     clearSession()
     // Refresh sessions list to show the new empty state

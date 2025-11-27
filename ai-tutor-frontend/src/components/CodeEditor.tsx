@@ -26,11 +26,6 @@ export const CodeEditor = ({ onSendMessage }: CodeEditorProps) => {
   };
 
   const handleAskAI = () => {
-    // Expand if minimized so user sees what they're asking about
-    if (codeEditor.isMinimized) {
-      setEditorMinimized(false);
-    }
-    
     let message = '';
     
     if (codeEditor.lastError) {
@@ -50,10 +45,6 @@ export const CodeEditor = ({ onSendMessage }: CodeEditorProps) => {
 
   const handleClose = () => {
     setEditorOpen(false);
-  };
-
-  const handleToggleMinimize = () => {
-    setEditorMinimized(!codeEditor.isMinimized);
   };
 
   // Auto-scroll to editor when opened
@@ -131,32 +122,20 @@ export const CodeEditor = ({ onSendMessage }: CodeEditorProps) => {
           // Expanded View - Full Editor
           <>
             {/* Header - Compact */}
-            <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200">
+            <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50">
               <div className="flex items-center space-x-2">
                 <h3 className="text-sm font-semibold text-gray-900">Python Editor</h3>
               </div>
-              <div className="flex items-center space-x-1">
-                <button
-                  onClick={handleToggleMinimize}
-                  className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded hover:bg-white"
-                  aria-label="Minimize editor"
-                  title="Minimize editor"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                <button
-                  onClick={handleClose}
-                  className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded hover:bg-white"
-                  aria-label="Close editor"
-                  title="Close editor"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+              <button
+                onClick={handleClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded hover:bg-white"
+                aria-label="Close editor"
+                title="Close editor"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
 
             {/* Editor */}
@@ -244,14 +223,13 @@ export const CodeEditor = ({ onSendMessage }: CodeEditorProps) => {
                   </button>
 
                   {showHistory && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                    <div className="absolute left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
                       <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                         <h4 className="font-semibold text-gray-900 text-sm">Execution History</h4>
                         <p className="text-xs text-gray-500 mt-0.5">Last 5 runs</p>
                       </div>
                       <div className="py-2">
                         {codeEditor.history.map((entry, index) => {
-                          const date = new Date(entry.timestamp);
                           const timeAgo = Math.floor((Date.now() - entry.timestamp) / 1000);
                           const timeStr = timeAgo < 60 ? 'Just now' : 
                                          timeAgo < 3600 ? `${Math.floor(timeAgo / 60)}m ago` :
