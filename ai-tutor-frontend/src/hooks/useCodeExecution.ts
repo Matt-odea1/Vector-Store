@@ -2,6 +2,33 @@ import { useState } from 'react';
 import { getPyodide } from '../utils/pyodideLoader';
 import type { CodeExecutionResult } from '../types/code';
 
+/**
+ * Custom hook for executing Python code in the browser using Pyodide
+ * 
+ * Handles code execution, output/error capture, and execution timing.
+ * Uses Pyodide WebAssembly runtime for client-side Python execution.
+ * 
+ * @returns Object containing:
+ *   - isLoading: Boolean indicating if code is currently executing
+ *   - result: Last execution result (output, error, execution time)
+ *   - runCode: Async function to execute Python code
+ * 
+ * @example
+ * ```tsx
+ * const { runCode, isLoading, result } = useCodeExecution();
+ * 
+ * const handleRun = async () => {
+ *   const result = await runCode('print("Hello, World!")');
+ *   console.log(result.output); // => "Hello, World!\n"
+ * };
+ * ```
+ * 
+ * @remarks
+ * - First code execution loads Pyodide (~10MB), subsequent runs are fast
+ * - Captures both stdout and stderr separately
+ * - Formats Python tracebacks for better readability
+ * - Execution happens entirely in the browser (no server calls)
+ */
 export function useCodeExecution() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<CodeExecutionResult | null>(null);

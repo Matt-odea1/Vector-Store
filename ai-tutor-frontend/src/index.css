@@ -4,6 +4,44 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide scrollbar but keep functionality */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+}
+
+/* Enhanced focus indicators for keyboard navigation */
+@layer utilities {
+  .focus-visible-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
+  }
+}
+
+/* Global focus-visible improvements */
+@layer base {
+  *:focus-visible {
+    outline: 2px solid theme('colors.primary.500');
+    outline-offset: 2px;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible {
+    @apply ring-2 ring-primary-500 ring-offset-2;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply ring-2 ring-primary-500 border-primary-500;
+  }
+}
+
 @layer base {
   body {
     @apply bg-gray-50 text-gray-900 antialiased;
@@ -112,5 +150,10 @@
 
   .markdown-content th {
     @apply bg-gray-100 font-semibold;
+  }
+
+  /* Toast animations */
+  .toast-enter {
+    @apply opacity-100 translate-x-0;
   }
 }

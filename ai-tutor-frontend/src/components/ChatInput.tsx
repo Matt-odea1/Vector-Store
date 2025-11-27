@@ -86,6 +86,8 @@ export const ChatInput = ({
                 : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
             title={codeEditor.isOpen ? 'Close Code Editor' : 'Open Code Editor'}
+            aria-label={codeEditor.isOpen ? 'Close Code Editor' : 'Open Code Editor'}
+            aria-pressed={codeEditor.isOpen}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
@@ -99,6 +101,9 @@ export const ChatInput = ({
               type="button"
               onClick={() => setIsModeDropdownOpen(!isModeDropdownOpen)}
               className="flex items-center space-x-1.5 rounded-lg border border-gray-300 bg-white px-3 pr-8 py-[7px] text-sm font-medium text-gray-900 hover:bg-gray-50 focus:outline-none transition-all cursor-pointer h-[40px]"
+              aria-label={`Change pedagogy mode. Current: ${selectedMode?.name}`}
+              aria-haspopup="listbox"
+              aria-expanded={isModeDropdownOpen}
             >
               <span className="text-base">{selectedMode?.icon}</span>
               <span className="hidden sm:inline">{selectedMode?.name}</span>
@@ -175,7 +180,9 @@ export const ChatInput = ({
               disabled={disabled}
               placeholder={placeholder}
               rows={1}
-              className="w-full resize-none rounded-lg border border-gray-300 px-4 py-[7px] focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50 disabled:cursor-not-allowed text-gray-900 placeholder-gray-400 leading-tight transition-colors"
+              aria-label="Message input"
+              aria-multiline="true"
+              className="w-full resize-none rounded-lg border border-gray-300 px-4 py-[7px] focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50 disabled:cursor-not-allowed text-gray-900 placeholder-gray-400 leading-tight transition-colors scrollbar-hide"
               style={{
                 minHeight: '40px',
                 maxHeight: '300px',
@@ -188,6 +195,7 @@ export const ChatInput = ({
             onClick={handleSend}
             disabled={disabled || !input.trim()}
             className="rounded-lg bg-primary-600 px-6 py-[7px] font-semibold text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-1.5 flex-shrink-0 h-[40px]"
+            aria-label="Send message"
           >
             <span>{disabled ? 'Sending...' : 'Send'}</span>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

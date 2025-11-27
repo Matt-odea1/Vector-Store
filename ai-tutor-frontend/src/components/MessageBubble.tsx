@@ -34,11 +34,18 @@ export const MessageBubble = ({ message }: MessageBubbleProps) => {
   const cleanedContent = !isUser ? cleanMarkdown(message.content) : message.content
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6 message-enter`}>
+    <div 
+      className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6 message-enter`}
+      role="article"
+      aria-label={`${isUser ? 'Your' : 'AI'} message`}
+    >
       <div className={`flex space-x-3 ${isUser ? 'max-w-2xl ml-auto' : 'max-w-4xl w-full'}`}>
         {/* Avatar for assistant */}
         {!isUser && (
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-md">
+          <div 
+            className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center shadow-md"
+            aria-hidden="true"
+          >
             <span className="text-white text-sm font-semibold">AI</span>
           </div>
         )}
@@ -52,6 +59,8 @@ export const MessageBubble = ({ message }: MessageBubbleProps) => {
               ? 'bg-amber-50 text-amber-900 border-2 border-amber-200 flex-1'
               : 'bg-white text-gray-900 border border-gray-200 flex-1'
           }`}
+          role={isError ? 'alert' : undefined}
+          aria-live={isError ? 'assertive' : 'polite'}
         >
           {isUser ? (
             <p className="text-white leading-relaxed m-0 whitespace-pre-wrap">{message.content}</p>

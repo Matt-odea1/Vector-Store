@@ -1,7 +1,7 @@
 /**
  * Data Usage Information Page
  */
-export const DataUsage = () => {
+const DataUsage = () => {
   return (
     <div className="h-screen overflow-y-auto bg-gray-50">
       <div className="py-12 px-4">
@@ -110,3 +110,5 @@ export const DataUsage = () => {
     </div>
   )
 }
+
+export default DataUsage

@@ -1,14 +1,39 @@
 /**
  * Axios API client with interceptors and error handling
  */
-import axios, { AxiosError } from 'axios'
+import axios from 'axios'
+import type { AxiosError } from 'axios'
 import { API_CONFIG } from '../config/api.config'
+import { API_CONFIG as RETRY_CONFIG } from '../config/theme'
+
+// Retry configuration
+const { MAX_RETRIES, RETRY_DELAY, RETRY_STATUS_CODES } = RETRY_CONFIG
 
 export const apiClient = axios.create({
   baseURL: API_CONFIG.baseURL,
   timeout: API_CONFIG.timeout,
   headers: API_CONFIG.headers,
 })
+
+// Helper function for exponential backoff delay
+const getRetryDelay = (retryCount: number): number => {
+  return RETRY_DELAY * Math.pow(2, retryCount)
+}
+
+// Helper function to check if request should be retried
+const shouldRetry = (error: AxiosError, retryCount: number): boolean => {
+  if (retryCount >= MAX_RETRIES) return false
+  
+  // Retry on network errors
+  if (!error.response) return true
+  
+  // Retry on specific status codes
+  if (error.response.status && RETRY_STATUS_CODES.includes(error.response.status)) {
+    return true
+  }
+  
+  return false
+}
 
 // Request interceptor
 apiClient.interceptors.request.use(
@@ -25,7 +50,7 @@ apiClient.interceptors.request.use(
   }
 )
 
-// Response interceptor
+// Response interceptor with retry logic
 apiClient.interceptors.response.use(
   (response) => {
     // Log responses in development
@@ -34,7 +59,32 @@ apiClient.interceptors.response.use(
     }
     return response
   },
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
+    const config = error.config as any
+    
+    // Initialize retry count if not present
+    if (!config) {
+      return Promise.reject(error)
+    }
+    
+    config.retryCount = config.retryCount || 0
+    
+    // Check if we should retry
+    if (shouldRetry(error, config.retryCount)) {
+      config.retryCount += 1
+      const delay = getRetryDelay(config.retryCount - 1)
+      
+      if (import.meta.env.DEV) {
+        console.warn(`[API Retry] Attempt ${config.retryCount}/${MAX_RETRIES} after ${delay}ms for ${config.url}`)
+      }
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, delay))
+      
+      // Retry the request
+      return apiClient.request(config)
+    }
+    
     // Handle different error types
     if (error.response) {
       // Server responded with error status

@@ -1,5 +1,26 @@
 /**
- * Custom hook for chat functionality
+ * Custom hook for managing chat interactions with the AI tutor
+ * 
+ * Provides functionality for sending messages, managing chat state,
+ * clearing history, and handling session management.
+ * 
+ * @returns Object containing:
+ *   - messages: Array of chat messages
+ *   - sessionId: Current session ID (null for new sessions)
+ *   - pedagogyMode: Active pedagogy mode
+ *   - isLoading: Loading state during API calls
+ *   - error: Error message (if any)
+ *   - sendMessage: Function to send a user message
+ *   - clearChat: Function to clear chat history
+ * 
+ * @example
+ * ```tsx
+ * const { messages, sendMessage, isLoading } = useChat();
+ * 
+ * const handleSubmit = async (text: string) => {
+ *   await sendMessage(text);
+ * };
+ * ```
  */
 import { useCallback } from 'react'
 import { useChatStore } from '../store/chatStore'

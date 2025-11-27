@@ -1,11 +1,14 @@
 /**
  * List of messages in the chat - Premium design
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, lazy, Suspense } from 'react'
 import { MessageBubble } from './MessageBubble'
-import { CodeEditor } from './CodeEditor'
+import { MessageSkeleton } from './Skeletons'
 import { useChatStore } from '../store/chatStore'
 import type { Message } from '../types/chat'
+
+// Lazy load CodeEditor for inline view
+const CodeEditor = lazy(() => import('./CodeEditor').then(module => ({ default: module.CodeEditor })))
 
 interface MessageListProps {
   messages: Message[]
@@ -126,7 +129,11 @@ export const MessageList = ({ messages, isLoading, onSendMessage, hideSplitEdito
         })}
 
         {/* Code Editor - appears inline with messages (hidden in split view) */}
-        {!hideSplitEditor && <CodeEditor onSendMessage={onSendMessage} />}
+        {!hideSplitEditor && (
+          <Suspense fallback={<MessageSkeleton />}>
+            <CodeEditor onSendMessage={onSendMessage} />
+          </Suspense>
+        )}
 
         {/* Typing indicator */}
         {isLoading && (

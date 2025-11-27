@@ -2,13 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { useChatStore } from '../store/chatStore';
 import { useCodeExecution } from '../hooks/useCodeExecution';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { 
+  CodeEditorHeader, 
+  CodeEditorControls, 
+  CodeHistoryModal 
+} from './CodeEditor/index';
 
 interface CodeEditorProps {
   onSendMessage: (message: string) => void;
 }
 
 export const CodeEditor = ({ onSendMessage }: CodeEditorProps) => {
-  const { codeEditor, setEditorCode, setEditorOpen, setEditorMinimized, setEditorOutput, setEditorExecuting, addToHistory, loadFromHistory, layoutMode, setLayoutMode } = useChatStore();
+  const { codeEditor, setEditorCode, setEditorOpen, setEditorOutput, setEditorExecuting, addToHistory, loadFromHistory, layoutMode } = useChatStore();
   const { runCode, isLoading } = useCodeExecution();
   const editorRef = useRef<HTMLDivElement>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -46,6 +52,26 @@ export const CodeEditor = ({ onSendMessage }: CodeEditorProps) => {
   const handleClose = () => {
     setEditorOpen(false);
   };
+
+  const handleClearOutput = () => {
+    setEditorOutput(null, null);
+  };
+
+  // Keyboard shortcuts for code editor
+  useKeyboardShortcuts([
+    {
+      key: 'Enter',
+      ctrl: true,
+      action: handleRunCode,
+      description: 'Run code',
+    },
+    {
+      key: 'e',
+      ctrl: true,
+      action: () => setEditorOpen(false),
+      description: 'Close editor',
+    },
+  ], codeEditor.isOpen); // Only active when editor is open
 
   // Auto-scroll to editor when opened
   useEffect(() => {
@@ -97,7 +123,6 @@ export const CodeEditor = ({ onSendMessage }: CodeEditorProps) => {
             
             <div className="flex items-center space-x-2">
               <button
-                onClick={handleToggleMinimize}
                 className="text-gray-600 hover:text-gray-900 transition-colors p-2 rounded-lg hover:bg-white"
                 aria-label="Expand editor"
                 title="Expand editor"
@@ -121,22 +146,8 @@ export const CodeEditor = ({ onSendMessage }: CodeEditorProps) => {
         ) : (
           // Expanded View - Full Editor
           <>
-            {/* Header - Compact */}
-            <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50">
-              <div className="flex items-center space-x-2">
-                <h3 className="text-sm font-semibold text-gray-900">Python Editor</h3>
-              </div>
-              <button
-                onClick={handleClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded hover:bg-white"
-                aria-label="Close editor"
-                title="Close editor"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+            {/* Header */}
+            <CodeEditorHeader onClose={handleClose} />
 
             {/* Editor */}
             <div className={isInSplitMode ? "flex-1 overflow-hidden" : "border-b border-gray-200"}>
@@ -173,99 +184,14 @@ export const CodeEditor = ({ onSendMessage }: CodeEditorProps) => {
             </div>
 
             {/* Controls */}
-            <div className="px-4 py-2.5 bg-[#2D2D2D] flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-            <button
-              onClick={handleRunCode}
-              disabled={isLoading || codeEditor.isExecuting}
-              className="flex items-center space-x-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-            >
-              {isLoading || codeEditor.isExecuting ? (
-                <>
-                  <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  <span>Running...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                  <span>Run</span>
-                </>
-              )}
-            </button>
-
-              <button
-                onClick={handleAskAI}
-                className="flex items-center space-x-1.5 px-3 py-1.5 bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Ask AI</span>
-              </button>
-
-              {/* History Dropdown */}
-              {codeEditor.history.length > 0 && (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowHistory(!showHistory)}
-                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium"
-                    title="View execution history"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>History ({codeEditor.history.length})</span>
-                  </button>
-
-                  {showHistory && (
-                    <div className="absolute left-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
-                      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                        <h4 className="font-semibold text-gray-900 text-sm">Execution History</h4>
-                        <p className="text-xs text-gray-500 mt-0.5">Last 5 runs</p>
-                      </div>
-                      <div className="py-2">
-                        {codeEditor.history.map((entry, index) => {
-                          const timeAgo = Math.floor((Date.now() - entry.timestamp) / 1000);
-                          const timeStr = timeAgo < 60 ? 'Just now' : 
-                                         timeAgo < 3600 ? `${Math.floor(timeAgo / 60)}m ago` :
-                                         `${Math.floor(timeAgo / 3600)}h ago`;
-                          
-                          return (
-                            <button
-                              key={index}
-                              onClick={() => {
-                                loadFromHistory(index);
-                                setShowHistory(false);
-                              }}
-                              className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0"
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs text-gray-500">{timeStr}</span>
-                                {entry.error ? (
-                                  <span className="text-xs px-2 py-0.5 bg-red-100 text-red-700 rounded font-medium">Error</span>
-                                ) : (
-                                  <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded font-medium">Success</span>
-                                )}
-                              </div>
-                              <div className="text-xs font-mono text-gray-700 line-clamp-2 bg-gray-50 px-2 py-1 rounded">
-                                {entry.code.split('\n')[0]}
-                                {entry.code.split('\n').length > 1 && '...'}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+            <CodeEditorControls 
+              onRunCode={handleRunCode}
+              onAskAI={handleAskAI}
+              onShowHistory={() => setShowHistory(true)}
+              isExecuting={codeEditor.isExecuting}
+              isLoading={isLoading}
+              hasHistory={codeEditor.history.length > 0}
+            />
 
             {/* Output Display */}
             {(codeEditor.lastOutput || codeEditor.lastError) && (
@@ -280,15 +206,27 @@ export const CodeEditor = ({ onSendMessage }: CodeEditorProps) => {
                       <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs font-semibold rounded">✓ Success</span>
                     )}
                   </div>
-                  {codeEditor.lastError && (
+                  <div className="flex items-center space-x-3">
+                    {codeEditor.lastError && (
+                      <button
+                        onClick={handleAskAI}
+                        className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center space-x-1"
+                      >
+                        <span>💡</span>
+                        <span>Get help with this error</span>
+                      </button>
+                    )}
                     <button
-                      onClick={handleAskAI}
-                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center space-x-1"
+                      onClick={handleClearOutput}
+                      className="px-2 py-1 text-xs text-gray-300 hover:text-white hover:bg-gray-700 transition-colors rounded flex items-center space-x-1"
+                      title="Clear output"
                     >
-                      <span>💡</span>
-                      <span>Get help with this error</span>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      <span>Clear</span>
                     </button>
-                  )}
+                  </div>
                 </div>
                 
                 <div className={`px-6 py-4 overflow-y-auto ${isInSplitMode ? 'flex-1' : 'max-h-80'}`}>
@@ -321,6 +259,17 @@ export const CodeEditor = ({ onSendMessage }: CodeEditorProps) => {
           </>
         )}
       </div>
+
+      {/* History Modal */}
+      {showHistory && (
+        <CodeHistoryModal
+          history={codeEditor.history}
+          onClose={() => setShowHistory(false)}
+          onLoadEntry={(entry) => {
+            loadFromHistory(codeEditor.history.indexOf(entry));
+          }}
+        />
+      )}
     </div>
   );
 };

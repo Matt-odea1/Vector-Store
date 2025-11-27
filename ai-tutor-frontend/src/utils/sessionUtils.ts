@@ -3,6 +3,7 @@
  */
 import type { Message } from '../types/chat'
 import type { SessionInfo } from '../types/session'
+import { SESSION_CONFIG } from '../config/theme'
 
 /**
  * Extract a title from session messages (first user message)
@@ -11,9 +12,11 @@ export const getSessionTitle = (messages: Message[]): string => {
   const firstUserMessage = messages.find((m) => m.role === 'user')
   if (firstUserMessage) {
     const content = firstUserMessage.content.trim()
-    return content.length > 50 ? content.slice(0, 47) + '...' : content
+    return content.length > SESSION_CONFIG.MAX_TITLE_LENGTH 
+      ? content.slice(0, SESSION_CONFIG.MAX_TITLE_LENGTH - 3) + '...' 
+      : content
   }
-  return 'New conversation'
+  return SESSION_CONFIG.DEFAULT_TITLE
 }
 
 /**

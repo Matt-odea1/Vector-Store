@@ -8,6 +8,7 @@ import { getSessionTitleFromInfo } from '../utils/sessionUtils'
 import { formatRelativeTime } from '../utils/formatTime'
 import { DeleteConfirmModal } from './DeleteConfirmModal'
 import { SessionSkeletonList } from './SessionSkeleton'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 
 export const Sidebar = () => {
   const { sessionId, clearSession } = useChatStore()
@@ -25,6 +26,30 @@ export const Sidebar = () => {
     title: string
   } | null>(null)
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null)
+
+  const handleNewChat = () => {
+    clearSession()
+    // Refresh sessions list to show the new empty state
+    fetchSessions()
+    // Scroll to top if needed
+    window.scrollTo(0, 0)
+  }
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: 'k',
+      ctrl: true,
+      action: handleNewChat,
+      description: 'New chat',
+    },
+    {
+      key: 'b',
+      ctrl: true,
+      action: () => setIsCollapsed(!isCollapsed),
+      description: 'Toggle sidebar',
+    },
+  ]);
 
   // Load sessions on mount
   useEffect(() => {
@@ -46,14 +71,6 @@ export const Sidebar = () => {
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
-
-  const handleNewChat = () => {
-    clearSession()
-    // Refresh sessions list to show the new empty state
-    fetchSessions()
-    // Scroll to top if needed
-    window.scrollTo(0, 0)
-  }
 
   const handleLoadSession = async (sid: string) => {
     if (sid === sessionId) return // Already loaded

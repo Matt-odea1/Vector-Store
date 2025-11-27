@@ -3,7 +3,26 @@
  */
 
 /**
- * Format a timestamp as relative time (e.g., "2m ago", "Yesterday")
+ * Format a timestamp as relative time with abbreviated units
+ * 
+ * @param timestamp - ISO 8601 timestamp string
+ * @returns Concise relative time string:
+ *   - < 1 minute: "Just now"
+ *   - < 1 hour: "15m ago"
+ *   - < 24 hours: "3h ago"
+ *   - 1 day: "Yesterday"
+ *   - < 7 days: "3d ago"
+ *   - < 30 days: "2w ago"
+ *   - Older: "Jan 15" or "Jan 15, 2023"
+ * 
+ * @example
+ * ```ts
+ * formatRelativeTime('2024-01-15T10:30:00Z')
+ * // => "2h ago" (if current time is 12:30 PM)
+ * 
+ * formatRelativeTime('2024-01-14T10:00:00Z')
+ * // => "Yesterday" (if current date is Jan 15)
+ * ```
  */
 export const formatRelativeTime = (timestamp: string): string => {
   const now = new Date()
@@ -29,7 +48,16 @@ export const formatRelativeTime = (timestamp: string): string => {
 }
 
 /**
- * Format a timestamp as full date and time
+ * Format a timestamp as a full localized date and time string
+ * 
+ * @param timestamp - ISO 8601 timestamp string
+ * @returns Localized date-time format (e.g., "Jan 15, 2024, 3:45 PM")
+ * 
+ * @example
+ * ```ts
+ * formatFullDateTime('2024-01-15T15:45:00Z')
+ * // => "Jan 15, 2024, 3:45 PM"
+ * ```
  */
 export const formatFullDateTime = (timestamp: string): string => {
   const date = new Date(timestamp)

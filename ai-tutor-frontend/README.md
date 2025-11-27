@@ -1,73 +1,186 @@
-# React + TypeScript + Vite
+# AI Tutor - Intelligent Learning Assistant
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An AI-powered tutoring system designed to help students learn computer science concepts through interactive conversation, code practice, and personalized pedagogy modes.
 
-Currently, two official plugins are available:
+## 🌟 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Core Functionality
+- **3 Pedagogy Modes**
+  - 📖 **Explanatory Mode**: Get detailed explanations and step-by-step learning
+  - 🐛 **Debug Help Mode**: Get assistance fixing code errors and understanding issues
+  - 🎯 **Practice Mode**: Active learning with guided questions and exercises
 
-## React Compiler
+- **Interactive Code Editor**
+  - Built-in Python code editor with Monaco Editor
+  - Client-side code execution using Pyodide
+  - Code execution history tracking
+  - Real-time syntax highlighting and error detection
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Session Management**
+  - Persistent chat sessions stored in DynamoDB
+  - Auto-generated session titles
+  - Session history with search and filtering
+  - Delete unwanted sessions
 
-## Expanding the ESLint configuration
+- **Smart UI/UX**
+  - ChatGPT-style interface
+  - Split-view mode for code + chat side-by-side
+  - Responsive design with mobile support
+  - Auto-collapsing sidebar on mobile
+  - Markdown rendering with syntax highlighting
+  - Smooth animations and transitions
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Privacy & Research**
+  - Transparent data usage information
+  - Research study compliance
+  - Anonymized data collection
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 🚀 Quick Start
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Prerequisites
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- Node.js 18+ and npm
+- Python 3.9+ (for backend)
+- AWS account with DynamoDB access (for production)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd AI-Tutor-Agent/ai-tutor-frontend
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment variables**
+   ```bash
+   cp .env.example .env.local
+   ```
+   
+   Edit `.env.local` and set your configuration:
+   ```env
+   VITE_API_BASE_URL=http://localhost:8000
+   VITE_APP_NAME=AI Tutor
+   VITE_APP_VERSION=1.0.0
+   ```
+
+4. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+   
+   The app will be available at `http://localhost:5173`
+
+5. **Make sure the backend is running**
+   ```bash
+   # In the root directory
+   cd ../
+   python -m uvicorn app:app --reload
+   ```
+
+## 📦 Build for Production
+
+```bash
+npm run build
+npm run preview  # Preview production build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The optimized production build will be in the `dist/` directory.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 🛠️ Technology Stack
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Frontend
+- **React 19** - UI framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool and dev server
+- **Zustand** - State management
+- **React Router** - Client-side routing
+- **Tailwind CSS** - Styling
+- **Monaco Editor** - Code editor component
+- **Pyodide** - Client-side Python execution
+- **React Markdown** - Markdown rendering
+- **Axios** - HTTP client
+
+### Backend Integration
+- FastAPI (Python)
+- DynamoDB for session storage
+- AWS Bedrock for LLM integration
+
+## 📁 Project Structure
+
 ```
+ai-tutor-frontend/
+├── src/
+│   ├── api/              # API client and endpoints
+│   ├── components/       # React components
+│   ├── config/           # Configuration files
+│   ├── hooks/            # Custom React hooks
+│   ├── pages/            # Page components
+│   ├── store/            # Zustand store
+│   ├── types/            # TypeScript types
+│   ├── utils/            # Utility functions
+│   ├── App.tsx           # Root component
+│   └── main.tsx          # App entry point
+├── public/               # Static assets
+├── .env.example          # Environment variables template
+└── package.json          # Dependencies and scripts
+```
+
+## 🎨 Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+
+## 🔧 Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VITE_API_BASE_URL` | Backend API URL | `http://localhost:8000` |
+| `VITE_APP_NAME` | Application name | `AI Tutor` |
+| `VITE_APP_VERSION` | Application version | `1.0.0` |
+
+### Pedagogy Modes
+
+The system supports three teaching modes:
+1. **Explanatory** - Best for learning new concepts
+2. **Debugging** - Best for fixing code issues
+3. **Practice** - Best for active learning and testing knowledge
+
+## 🌐 Deployment
+
+### Vercel / Netlify
+1. Build: `npm run build`
+2. Deploy the `dist/` folder
+3. Set environment variables in your hosting platform
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push and open a Pull Request
+
+## 🗺️ Roadmap
+
+- [ ] Add unit tests with Vitest
+- [ ] Implement error boundary
+- [ ] Add keyboard shortcuts
+- [ ] Improve accessibility
+- [ ] Add theme toggle
+- [ ] Export chat history
+
+## 📄 License
+
+This project is part of a research study at UNSW Sydney.
+
+---
+
+For questions or support, please contact the research team.
