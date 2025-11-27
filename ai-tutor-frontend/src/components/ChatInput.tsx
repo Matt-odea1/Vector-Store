@@ -5,6 +5,7 @@ import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
 import { useChatStore } from '../store/chatStore'
 import { PEDAGOGY_MODES } from '../types/pedagogy'
 import type { PedagogyMode } from '../types/pedagogy'
+import { trackMessageSent, trackCodeEditorToggled, trackModeChanged } from '../utils/analytics'
 
 interface ChatInputProps {
   onSend: (message: string) => void
@@ -52,18 +53,23 @@ export const ChatInput = ({
   }, [isModeDropdownOpen])
 
   const handleSelectMode = (mode: PedagogyMode) => {
+    const previousMode = pedagogyMode
     setPedagogyMode(mode)
     setIsModeDropdownOpen(false)
+    trackModeChanged(previousMode, mode)
   }
 
   const handleSend = () => {
     if (!input.trim() || disabled) return
     onSend(input)
     setInput('')
+    trackMessageSent(pedagogyMode)
   }
   
   const toggleCodeEditor = () => {
-    setEditorOpen(!codeEditor.isOpen)
+    const newState = !codeEditor.isOpen
+    setEditorOpen(newState)
+    trackCodeEditorToggled(newState)
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {

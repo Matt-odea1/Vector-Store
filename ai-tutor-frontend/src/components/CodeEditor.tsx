@@ -3,6 +3,7 @@ import Editor from '@monaco-editor/react';
 import { useChatStore } from '../store/chatStore';
 import { useCodeExecution } from '../hooks/useCodeExecution';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { trackCodeExecuted } from '../utils/analytics';
 import { 
   CodeEditorHeader, 
   CodeEditorControls, 
@@ -26,6 +27,8 @@ export const CodeEditor = ({ onSendMessage }: CodeEditorProps) => {
       setEditorOutput(result.output, result.error);
       // Add to history after execution
       addToHistory(codeEditor.code, result.output, result.error);
+      // Track code execution
+      trackCodeExecuted(!!result.error);
     } finally {
       setEditorExecuting(false);
     }

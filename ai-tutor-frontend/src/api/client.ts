@@ -2,9 +2,12 @@
  * Axios API client with interceptors and error handling
  */
 import axios from 'axios'
-import type { AxiosError } from 'axios'
+import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { API_CONFIG } from '../config/api.config'
 import { API_CONFIG as RETRY_CONFIG } from '../config/theme'
+import { trackAPIError } from '../utils/analytics'
+import { trackAPITiming, createTimer } from '../utils/performance'
+import { trackError } from '../utils/errorTracking'
 
 // Retry configuration
 const { MAX_RETRIES, RETRY_DELAY, RETRY_STATUS_CODES } = RETRY_CONFIG
@@ -37,7 +40,10 @@ const shouldRetry = (error: AxiosError, retryCount: number): boolean => {
 
 // Request interceptor
 apiClient.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
+    // Start timing the request
+    ;(config as any).startTime = performance.now()
+    
     // Log requests in development
     if (import.meta.env.DEV) {
       console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, config.data)
@@ -46,6 +52,10 @@ apiClient.interceptors.request.use(
   },
   (error) => {
     console.error('[API Request Error]', error)
+    trackError(error, {
+      component: 'apiClient',
+      context: 'Request interceptor error',
+    })
     return Promise.reject(error)
   }
 )
@@ -53,6 +63,14 @@ apiClient.interceptors.request.use(
 // Response interceptor with retry logic
 apiClient.interceptors.response.use(
   (response) => {
+    // Track API timing
+    const startTime = (response.config as any).startTime
+    if (startTime) {
+      const duration = performance.now() - startTime
+      const endpoint = response.config.url || 'unknown'
+      trackAPITiming(endpoint, duration, response.status)
+    }
+    
     // Log responses in development
     if (import.meta.env.DEV) {
       console.log(`[API Response] ${response.config.url}`, response.data)
@@ -61,6 +79,20 @@ apiClient.interceptors.response.use(
   },
   async (error: AxiosError) => {
     const config = error.config as any
+    
+    // Track API errors
+    if (error.response) {
+      const endpoint = config?.url || 'unknown'
+      trackAPIError(endpoint, error.response.status)
+      trackError(error, {
+        component: 'apiClient',
+        context: `API error: ${endpoint}`,
+        metadata: {
+          status: error.response.status,
+          statusText: error.response.statusText,
+        },
+      })
+    }
     
     // Initialize retry count if not present
     if (!config) {

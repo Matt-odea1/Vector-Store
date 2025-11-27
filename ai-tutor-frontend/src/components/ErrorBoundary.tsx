@@ -4,6 +4,7 @@
  */
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
+import { trackError } from '../utils/errorTracking'
 
 interface Props {
   children: ReactNode
@@ -36,7 +37,15 @@ export class ErrorBoundary extends Component<Props, State> {
       console.error('ErrorBoundary caught an error:', error, errorInfo)
     }
 
-    // You can also log the error to an error reporting service here
+    // Track error in production
+    trackError(error, {
+      component: 'ErrorBoundary',
+      context: 'React component error',
+      metadata: {
+        componentStack: errorInfo.componentStack,
+      },
+    })
+
     this.setState({
       error,
       errorInfo,

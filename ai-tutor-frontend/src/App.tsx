@@ -7,11 +7,13 @@ import { ChatContainer } from './components/ChatContainer'
 import { Sidebar } from './components/Sidebar'
 import { ToastContainer } from './components/ToastContainer'
 import { KeyboardShortcutsModal } from './components/KeyboardShortcutsModal'
+import SEO from './components/SEO'
 import { STORAGE_KEYS } from './config/constants'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { useToastStore } from './store/toastStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useChatStore } from './store/chatStore'
+import { webApplicationSchema, organizationSchema, injectStructuredData } from './utils/structuredData'
 
 function App() {
   const isOnline = useOnlineStatus()
@@ -32,6 +34,17 @@ function App() {
       addToast('Connection restored', 'success', 3000)
     }
   }, [isOnline, addToast])
+
+  // Inject structured data for SEO
+  useEffect(() => {
+    const cleanupApp = injectStructuredData(webApplicationSchema)
+    const cleanupOrg = injectStructuredData(organizationSchema)
+    
+    return () => {
+      cleanupApp()
+      cleanupOrg()
+    }
+  }, [])
 
   // Global keyboard shortcuts
   useKeyboardShortcuts([
@@ -56,6 +69,13 @@ function App() {
 
   return (
     <>
+      {/* SEO Meta Tags */}
+      <SEO
+        title="Chat Interface"
+        description="Interactive AI tutoring chat interface with code editor. Get help with programming, debug code, and learn through conversation."
+        keywords="AI tutor, programming chat, code editor, Python learning, interactive coding"
+      />
+
       {/* Skip to main content link for screen readers */}
       <a
         href="#main-content"

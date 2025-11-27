@@ -1,8 +1,17 @@
-import { StrictMode, Suspense, lazy } from 'react'
+import { StrictMode, Suspense, lazy, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { HelmetProvider } from 'react-helmet-async'
 import './index.css'
 import { ErrorBoundary } from './components/ErrorBoundary.tsx'
+import { initErrorTracking } from './utils/errorTracking'
+import { initAnalytics, trackPageView } from './utils/analytics'
+import { initPerformanceTracking } from './utils/performance'
+
+// Initialize monitoring services
+initErrorTracking()
+initAnalytics()
+initPerformanceTracking()
 
 // Lazy load routes for code splitting
 const App = lazy(() => import('./App.tsx'))
@@ -21,17 +30,35 @@ const PageLoader = () => (
   </div>
 )
 
+// Analytics tracking wrapper
+const AnalyticsWrapper = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation()
+
+  useEffect(() => {
+    trackPageView({
+      path: location.pathname,
+      title: document.title,
+    })
+  }, [location])
+
+  return <>{children}</>
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ErrorBoundary>
-      <BrowserRouter>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/" element={<App />} />
-            <Route path="/data-usage" element={<DataUsage />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-    </ErrorBoundary>
+    <HelmetProvider>
+      <ErrorBoundary>
+        <BrowserRouter>
+          <AnalyticsWrapper>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<App />} />
+                <Route path="/data-usage" element={<DataUsage />} />
+              </Routes>
+            </Suspense>
+          </AnalyticsWrapper>
+        </BrowserRouter>
+      </ErrorBoundary>
+    </HelmetProvider>
   </StrictMode>,
 )

@@ -1,9 +1,20 @@
+import SEO from '../components/SEO'
+
 /**
  * Data Usage Information Page
  */
 const DataUsage = () => {
   return (
-    <div className="h-screen overflow-y-auto bg-gray-50">
+    <>
+      {/* SEO Meta Tags */}
+      <SEO
+        title="Data Usage & Privacy"
+        description="Learn how your data is collected, used, and protected in the AI Tutor research study. Information about privacy, data storage, and your rights."
+        keywords="data usage, privacy policy, research study, COMP9021, data protection"
+        noIndex={true}
+      />
+
+      <div className="h-screen overflow-y-auto bg-gray-50">
       <div className="py-12 px-4">
         <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-8">
         <div className="mb-6">
@@ -108,6 +119,7 @@ const DataUsage = () => {
         </div>
       </div>
     </div>
+    </>
   )
 }
 

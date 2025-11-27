@@ -9,6 +9,7 @@ import { formatRelativeTime } from '../utils/formatTime'
 import { DeleteConfirmModal } from './DeleteConfirmModal'
 import { SessionSkeletonList } from './SessionSkeleton'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { trackSessionCreated } from '../utils/analytics'
 
 export const Sidebar = () => {
   const { sessionId, clearSession } = useChatStore()
@@ -33,6 +34,8 @@ export const Sidebar = () => {
     fetchSessions()
     // Scroll to top if needed
     window.scrollTo(0, 0)
+    // Track session creation
+    trackSessionCreated()
   }
 
   // Keyboard shortcuts

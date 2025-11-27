@@ -1,0 +1,12 @@
+# AI Tutor - Robots.txt
+# Control search engine crawler access
+
+# Allow all robots to access public pages
+User-agent: *
+Allow: /
+
+# Disallow data usage page from being indexed (privacy policy)
+Disallow: /data-usage
+
+# Sitemap location
+Sitemap: https://ai-tutor.example.com/sitemap.xml
