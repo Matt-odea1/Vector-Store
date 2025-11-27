@@ -1,0 +1,331 @@
+import { useState, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { useNavigate } from 'react-router-dom';
+import Papa from 'papaparse';
+import { apiService } from '../services/api';
+import { useAssessmentStore } from '../store/assessmentStore';
+import type { UploadedStudent } from '../../../shared/types/assessment';
+
+interface ParsedStudent {
+  name: string;
+  email: string;
+  studentId: string;
+  code: string;
+  assignmentFile?: string;
+}
+
+interface BulkUploadCSVProps {
+  assessmentId: string;
+}
+
+export default function BulkUploadCSV({ assessmentId }: BulkUploadCSVProps) {
+  const navigate = useNavigate();
+  const { setLoading, setError } = useAssessmentStore();
+
+  const [parsedStudents, setParsedStudents] = useState<ParsedStudent[]>([]);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const parseCSV = (csvText: string): Promise<ParsedStudent[]> => {
+    return new Promise<ParsedStudent[]>((resolve, reject) => {
+      Papa.parse<Record<string, string>>(csvText, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          try {
+            if (results.errors.length > 0) {
+              reject(new Error(`CSV parse errors: ${results.errors.map(e => e.message).join(', ')}`));
+              return;
+            }
+
+            if (results.data.length === 0) {
+              reject(new Error('CSV file is empty'));
+              return;
+            }
+
+            // Normalize headers to lowercase
+            const normalizedData = results.data.map(row => {
+              const normalizedRow: Record<string, string> = {};
+              Object.keys(row).forEach(key => {
+                normalizedRow[key.toLowerCase().trim()] = row[key];
+              });
+              return normalizedRow;
+            });
+
+            // Validate required headers
+            const requiredHeaders = ['name', 'email', 'studentid', 'code'];
+            const firstRow = normalizedData[0];
+            const headers = Object.keys(firstRow);
+            const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+
+            if (missingHeaders.length > 0) {
+              reject(new Error(`Missing required columns: ${missingHeaders.join(', ')}`));
+              return;
+            }
+
+            // Map to ParsedStudent[]
+            const students: ParsedStudent[] = normalizedData.map((row, index) => {
+              // Validate email
+              const email = row.email?.trim();
+              if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                throw new Error(`Row ${index + 2}: Invalid email address "${email}"`);
+              }
+
+              return {
+                name: row.name?.trim() || '',
+                email,
+                studentId: row.studentid?.trim() || '',
+                code: row.code || '',
+                assignmentFile: row.assignmentfile?.trim(),
+              };
+            });
+
+            resolve(students);
+          } catch (err) {
+            reject(err);
+          }
+        },
+        error: (error: Error) => {
+          reject(new Error(`Failed to parse CSV: ${error.message}`));
+        },
+      });
+    });
+  };
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    setParseError(null);
+
+    if (acceptedFiles.length === 0) return;
+
+    const file = acceptedFiles[0];
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+      try {
+        const csvText = e.target?.result as string;
+        const students = await parseCSV(csvText);
+        setParsedStudents(students);
+      } catch (err) {
+        setParseError(err instanceof Error ? err.message : 'Failed to parse CSV file');
+      }
+    };
+
+    reader.onerror = () => {
+      setParseError('Failed to read file');
+    };
+
+    reader.readAsText(file);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'text/csv': ['.csv'],
+      'application/vnd.ms-excel': ['.csv'],
+    },
+    multiple: false,
+  });
+
+  const handleUpload = async () => {
+    if (!assessmentId || parsedStudents.length === 0) return;
+
+    try {
+      setIsUploading(true);
+      setLoading(true);
+      setError(null);
+
+      const uploadData: UploadedStudent[] = parsedStudents.map((s) => ({
+        name: s.name,
+        email: s.email,
+        studentId: s.studentId,
+        code: s.code,
+        assignmentFile: s.assignmentFile,
+      }));
+
+      await apiService.uploadStudents({ assessmentId, students: uploadData });
+      
+      // Students will be fetched later via API when viewing progress
+      // Don't need to add to store immediately
+
+      // Navigate to question generation
+      navigate(`/assessments/${assessmentId}/generate`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload students');
+    } finally {
+      setIsUploading(false);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-4xl space-y-6">
+      {/* CSV Format Info */}
+      <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-slate-100 mb-3">CSV Format Requirements</h3>
+        <p className="text-slate-300 mb-4">
+          Your CSV file must include the following columns (case-insensitive):
+        </p>
+        <ul className="space-y-2 text-sm text-slate-300">
+          <li className="flex items-start">
+            <span className="text-primary-400 mr-2">•</span>
+            <span><strong>name</strong> - Student's full name</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-primary-400 mr-2">•</span>
+            <span><strong>email</strong> - Student's email address</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-primary-400 mr-2">•</span>
+            <span><strong>studentId</strong> - Unique student identifier</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-primary-400 mr-2">•</span>
+            <span><strong>code</strong> - Student's submitted code (single line or escaped)</span>
+          </li>
+          <li className="flex items-start">
+            <span className="text-slate-500 mr-2">•</span>
+            <span className="text-slate-400"><strong>assignmentFile</strong> - (Optional) Path to assignment file</span>
+          </li>
+        </ul>
+        
+        <div className="mt-4 p-3 bg-slate-900 rounded border border-slate-700">
+          <p className="text-xs text-slate-400 font-mono mb-2">Example CSV:</p>
+          <pre className="text-xs text-slate-300 font-mono overflow-x-auto">
+{`name,email,studentId,code
+John Doe,john@example.com,12345,"def factorial(n): return 1 if n <= 1 else n * factorial(n-1)"
+Jane Smith,jane@example.com,12346,"def factorial(n):\\n    if n <= 1:\\n        return 1\\n    return n * factorial(n-1)"`}
+          </pre>
+        </div>
+      </div>
+
+      {/* Dropzone */}
+      <div
+        {...getRootProps()}
+        className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
+          isDragActive
+            ? 'border-primary-500 bg-primary-500/10'
+            : 'border-slate-600 bg-slate-800 hover:border-primary-500 hover:bg-slate-750'
+        }`}
+      >
+        <input {...getInputProps()} />
+        <svg
+          className="mx-auto h-12 w-12 text-slate-400 mb-4"
+          stroke="currentColor"
+          fill="none"
+          viewBox="0 0 48 48"
+          aria-hidden="true"
+        >
+          <path
+            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        {isDragActive ? (
+          <p className="text-slate-200 font-medium">Drop the CSV file here</p>
+        ) : (
+          <>
+            <p className="text-slate-200 font-medium mb-1">
+              Drag and drop CSV file here, or click to browse
+            </p>
+            <p className="text-sm text-slate-400">Only .csv files are accepted</p>
+          </>
+        )}
+      </div>
+
+      {/* Parse Error */}
+      {parseError && (
+        <div className="bg-red-500/10 border border-red-500 rounded-lg p-4">
+          <div className="flex items-start">
+            <svg
+              className="h-5 w-5 text-red-400 mr-3 mt-0.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div>
+              <h4 className="text-sm font-medium text-red-300 mb-1">CSV Parse Error</h4>
+              <p className="text-sm text-red-200">{parseError}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Table */}
+      {parsedStudents.length > 0 && (
+        <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+          <div className="p-4 border-b border-slate-700">
+            <h3 className="text-lg font-semibold text-slate-100">
+              Preview ({parsedStudents.length} students)
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-750">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
+                    Student ID
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
+                    Code Length
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700">
+                {parsedStudents.slice(0, 10).map((student, index) => (
+                  <tr key={index} className="hover:bg-slate-750">
+                    <td className="px-4 py-3 text-sm text-slate-200">{student.name}</td>
+                    <td className="px-4 py-3 text-sm text-slate-300">{student.email}</td>
+                    <td className="px-4 py-3 text-sm text-slate-300">{student.studentId}</td>
+                    <td className="px-4 py-3 text-sm text-slate-400">
+                      {student.code.length} chars
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {parsedStudents.length > 10 && (
+            <div className="px-4 py-3 bg-slate-750 text-sm text-slate-400">
+              Showing 10 of {parsedStudents.length} students
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      {parsedStudents.length > 0 && (
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleUpload}
+            disabled={isUploading}
+            className="bg-primary-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-primary-700 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isUploading ? 'Uploading...' : `Upload ${parsedStudents.length} Students`}
+          </button>
+          <button
+            onClick={() => setParsedStudents([])}
+            disabled={isUploading}
+            className="bg-slate-700 text-slate-200 px-6 py-2.5 rounded-lg font-medium hover:bg-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,69 @@
+import { Link, useParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useAssessmentStore } from '../store/assessmentStore';
+import { apiService } from '../services/api';
+import ResultsDashboard from '../components/ResultsDashboard';
+
+export default function ViewResults() {
+  const { assessmentId } = useParams<{ assessmentId: string }>();
+  const { selectedAssessment, setSelectedAssessment, setLoading, setError } = useAssessmentStore();
+
+  useEffect(() => {
+    if (assessmentId && assessmentId !== selectedAssessment?.id) {
+      loadAssessment(assessmentId);
+    }
+  }, [assessmentId]);
+
+  const loadAssessment = async (id: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const assessment = await apiService.getAssessment(id);
+      setSelectedAssessment(assessment);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load assessment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!selectedAssessment || !assessmentId) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-900">
+      <header className="bg-slate-800 border-b border-slate-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center space-x-4 mb-2">
+                <Link to="/assessments" className="text-slate-400 hover:text-slate-300">
+                  ← Back to Assessments
+                </Link>
+              </div>
+              <h1 className="text-2xl font-bold text-slate-100">
+                Results: {selectedAssessment.title}
+              </h1>
+              <p className="text-slate-400 text-sm mt-1">{selectedAssessment.course}</p>
+            </div>
+            <Link
+              to={`/assessments/${assessmentId}/monitor`}
+              className="bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-600 transition-colors"
+            >
+              Back to Progress
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <ResultsDashboard assessmentId={assessmentId} />
+      </main>
+    </div>
+  );
+}
