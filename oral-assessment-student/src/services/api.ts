@@ -1,0 +1,192 @@
+/**
+ * API Service Layer - Handles all backend communication
+ */
+
+import axios, { AxiosError } from 'axios';
+import type {
+  Question,
+  Progress,
+  Results,
+  UploadUrlResponse,
+  ApiError,
+} from '../types';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+// Create axios instance with default config
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 30000, // 30 second timeout
+});
+
+// Error handler
+const handleApiError = (error: AxiosError): never => {
+  if (error.response) {
+    // Server responded with error
+    const responseData = error.response.data as any;
+    const apiError: ApiError = {
+      message: responseData?.detail || error.message,
+      status: error.response.status,
+      details: error.response.data,
+    };
+    throw apiError;
+  } else if (error.request) {
+    // Request made but no response
+    throw {
+      message: 'No response from server. Please check your connection.',
+      status: 0,
+    } as ApiError;
+  } else {
+    // Something else went wrong
+    throw {
+      message: error.message || 'An unexpected error occurred',
+    } as ApiError;
+  }
+};
+
+/**
+ * Get all questions for a student's assessment
+ */
+export async function getQuestions(
+  studentId: string,
+  assessmentId: string
+): Promise<Question[]> {
+  try {
+    const response = await apiClient.get(
+      `/api/student/${studentId}/assessment/${assessmentId}/questions`
+    );
+    return response.data.questions || [];
+  } catch (error) {
+    return handleApiError(error as AxiosError);
+  }
+}
+
+/**
+ * Submit an audio answer for a question
+ */
+export async function submitAnswer(
+  studentId: string,
+  questionId: string,
+  audioUrl: string,
+  duration: number
+): Promise<void> {
+  try {
+    await apiClient.post(`/api/student/${studentId}/answer`, {
+      question_id: questionId,
+      audio_url: audioUrl,
+      duration,
+    });
+  } catch (error) {
+    return handleApiError(error as AxiosError);
+  }
+}
+
+/**
+ * Submit the complete assessment
+ */
+export async function submitAssessment(
+  studentId: string,
+  assessmentId: string
+): Promise<void> {
+  try {
+    await apiClient.put(`/api/student/${studentId}/submit`, {
+      assessment_id: assessmentId,
+    });
+  } catch (error) {
+    return handleApiError(error as AxiosError);
+  }
+}
+
+/**
+ * Get current progress for student's assessment
+ */
+export async function getProgress(
+  studentId: string,
+  assessmentId: string
+): Promise<Progress> {
+  try {
+    const response = await apiClient.get(
+      `/api/student/${studentId}/assessment/${assessmentId}/progress`
+    );
+    return response.data;
+  } catch (error) {
+    return handleApiError(error as AxiosError);
+  }
+}
+
+/**
+ * Get evaluation results for completed assessment
+ */
+export async function getResults(
+  studentId: string,
+  assessmentId: string
+): Promise<Results> {
+  try {
+    const response = await apiClient.get(
+      `/api/student/${studentId}/assessment/${assessmentId}/results`
+    );
+    return response.data;
+  } catch (error) {
+    return handleApiError(error as AxiosError);
+  }
+}
+
+/**
+ * Get S3 presigned upload URL for audio file
+ */
+export async function getUploadUrl(
+  filename: string,
+  contentType: string = 'audio/webm'
+): Promise<UploadUrlResponse> {
+  try {
+    const response = await apiClient.post(
+      `/api/s3/upload-url?filename=${encodeURIComponent(filename)}&content_type=${encodeURIComponent(contentType)}`
+    );
+    return response.data;
+  } catch (error) {
+    return handleApiError(error as AxiosError);
+  }
+}
+
+/**
+ * Upload audio file directly to S3
+ */
+export async function uploadAudioToS3(
+  uploadUrl: string,
+  audioBlob: Blob,
+  onProgress?: (progress: number) => void
+): Promise<void> {
+  try {
+    await axios.put(uploadUrl, audioBlob, {
+      headers: {
+        'Content-Type': audioBlob.type,
+      },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          onProgress(percentCompleted);
+        }
+      },
+    });
+  } catch (error) {
+    throw {
+      message: 'Failed to upload audio file',
+      details: error,
+    } as ApiError;
+  }
+}
+
+export default {
+  getQuestions,
+  submitAnswer,
+  submitAssessment,
+  getProgress,
+  getResults,
+  getUploadUrl,
+  uploadAudioToS3,
+};
